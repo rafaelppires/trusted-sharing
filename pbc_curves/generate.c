@@ -34,5 +34,5 @@ int main() {
 	FILE* pf1;
 	pf1 = fopen ("a_256_1536.txt", "w") ;
 	pbc_param_out_str(pf1, par1);
-	fclose(pf1, par1);
+	fclose(pf1);
 }
