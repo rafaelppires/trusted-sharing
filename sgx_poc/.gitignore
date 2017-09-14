@@ -1,0 +1,5 @@
+*.swp
+ntv_obj
+ntv_bin
+sgx_obj
+sgx_bin
