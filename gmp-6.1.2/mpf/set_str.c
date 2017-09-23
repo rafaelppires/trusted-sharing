@@ -42,6 +42,11 @@ see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
+#ifdef ENABLE_SGX
+#undef HAVE_LANGINFO_H
+#undef HAVE_LOCALE_H
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

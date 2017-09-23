@@ -140,8 +140,10 @@ BUILT_SOURCES = gmp.h
 DISTCLEANFILES = $(BUILT_SOURCES) config.m4 @gmp_srclinks@
 
 # Tell gmp.h it's building gmp, not an application, used by windows DLL stuff.
-AM_CPPFLAGS=-D__GMP_WITHIN_GMP
+AM_CPPFLAGS=-D__GMP_WITHIN_GMP 
 
+export SGXSDKPATH = /opt/intel/sgxsdk
+export SGXCOMMONPATH = @sgxcommon_path@ 
 
 MPF_OBJECTS = mpf/init$U.lo mpf/init2$U.lo mpf/inits$U.lo mpf/set$U.lo	    \
   mpf/set_ui$U.lo mpf/set_si$U.lo mpf/set_str$U.lo mpf/set_d$U.lo	    \

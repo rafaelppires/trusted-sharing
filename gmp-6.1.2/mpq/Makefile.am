@@ -31,6 +31,10 @@
 
 AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir)
 
+if SGXENABLED
+AM_CPPFLAGS += -DENABLE_SGX -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
+endif
+
 noinst_LTLIBRARIES = libmpq.la
 libmpq_la_SOURCES =							\
   abs.c aors.c canonicalize.c clear.c clears.c				\

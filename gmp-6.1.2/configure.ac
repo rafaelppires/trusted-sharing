@@ -81,6 +81,19 @@ AM_INIT_AUTOMAKE([1.8 gnu no-dependencies])
 AC_CONFIG_HEADERS(config.h:config.in)
 AM_MAINTAINER_MODE
 
+AC_ARG_ENABLE(sgx,
+AC_HELP_STRING([--enable-sgx],[enable SGX compilation [default=no]]),
+[case $enableval in
+yes|no) ;;
+*) AC_MSG_ERROR([bad value $enableval for --enable-sgx, need yes or no]) ;;
+esac],
+[enable_sgx=no])
+
+AM_CONDITIONAL([SGXENABLED], [test "$enable_sgx" = "yes"])
+if test "$enable_sgx" = "yes"; then
+  AC_DEFINE(ENABLE_SGX,1,
+  [Define to 1 to ENABLE_SGX, per --enable-sgx])
+fi
 
 AC_ARG_ENABLE(assert,
 AC_HELP_STRING([--enable-assert],[enable ASSERT checking [default=no]]),
@@ -3908,6 +3921,8 @@ GMP_FINISH
 # FIXME: Upcoming version of autoconf/automake may not like broken lines.
 #        Right now automake isn't accepting the new AC_CONFIG_FILES scheme.
 
+AC_SUBST([sgxcommon_path],[$(realpath ${srcdir}/../../sgx_common)])
+
 AC_OUTPUT(Makefile							\
   mpf/Makefile mpn/Makefile mpq/Makefile				\
   mpz/Makefile printf/Makefile scanf/Makefile rand/Makefile cxx/Makefile \
@@ -3919,8 +3934,8 @@ AC_OUTPUT(Makefile							\
   demos/Makefile demos/calc/Makefile demos/expr/Makefile		\
   gmp.h:gmp-h.in)
 
-AC_MSG_NOTICE([summary of build options:
 
+AC_MSG_NOTICE([summary of build options:
   Version:           ${PACKAGE_STRING}
   Host type:         ${host}
   ABI:               ${ABI}

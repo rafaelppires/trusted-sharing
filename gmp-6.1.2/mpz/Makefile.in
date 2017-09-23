@@ -116,6 +116,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@SGXENABLED_TRUE@am__append_1 = -DENABLE_SGX -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
 subdir = mpz
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -379,7 +380,9 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
+sgxcommon_path = @sgxcommon_path@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 sysconfdir = @sysconfdir@
@@ -387,7 +390,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir)
+AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir) $(am__append_1)
 noinst_LTLIBRARIES = libmpz.la
 libmpz_la_SOURCES = aors.h aors_ui.h fits_s.h mul_i.h \
   2fac_ui.c \

@@ -356,7 +356,7 @@ DIST_SUBDIRS = $(SUBDIRS)
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.in \
 	$(srcdir)/gmp-h.in AUTHORS COPYING ChangeLog INSTALL NEWS \
 	README compile config.guess config.sub install-sh ltmain.sh \
-	missing
+	missing ylwrap
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -552,7 +552,9 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
+sgxcommon_path = @sgxcommon_path@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 sysconfdir = @sysconfdir@
@@ -616,7 +618,7 @@ DISTCLEANFILES = $(BUILT_SOURCES) config.m4 @gmp_srclinks@ \
 	gen-jacobitab$(EXEEXT_FOR_BUILD) gen-psqr$(EXEEXT_FOR_BUILD)
 
 # Tell gmp.h it's building gmp, not an application, used by windows DLL stuff.
-AM_CPPFLAGS = -D__GMP_WITHIN_GMP
+AM_CPPFLAGS = -D__GMP_WITHIN_GMP 
 MPF_OBJECTS = mpf/init$U.lo mpf/init2$U.lo mpf/inits$U.lo mpf/set$U.lo	    \
   mpf/set_ui$U.lo mpf/set_si$U.lo mpf/set_str$U.lo mpf/set_d$U.lo	    \
   mpf/set_z$U.lo mpf/iset$U.lo mpf/iset_ui$U.lo mpf/iset_si$U.lo	    \
@@ -1387,6 +1389,9 @@ uninstall-am: uninstall-includeHEADERS uninstall-libLTLIBRARIES \
 
 .PRECIOUS: Makefile
 
+
+export SGXSDKPATH = /opt/intel/sgxsdk
+export SGXCOMMONPATH = @sgxcommon_path@ 
 
 install-data-hook:
 	@echo ''

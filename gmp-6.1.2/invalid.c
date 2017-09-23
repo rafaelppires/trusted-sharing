@@ -34,7 +34,11 @@ see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
+#ifdef ENABLE_SGX
+#include <libc_mock/libc_proxy.h>
+#else
 #include <signal.h>
+#endif
 #include <stdlib.h>
 
 #if HAVE_UNISTD_H

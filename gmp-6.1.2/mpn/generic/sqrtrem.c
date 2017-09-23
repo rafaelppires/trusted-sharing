@@ -40,7 +40,6 @@ see https://www.gnu.org/licenses/.  */
 
 /* See "Karatsuba Square Root", reference in gmp.texi.  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 

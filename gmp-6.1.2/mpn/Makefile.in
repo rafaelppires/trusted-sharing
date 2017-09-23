@@ -144,6 +144,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@SGXENABLED_TRUE@am__append_1 = -DENABLE_SGX -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
 subdir = mpn
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -377,7 +378,9 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
+sgxcommon_path = @sgxcommon_path@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 sysconfdir = @sysconfdir@
@@ -385,9 +388,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir) \
-  -DOPERATION_`echo $* | sed 's/_$$//'`
-
+AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir) -DOPERATION_`echo $* \
+	| sed 's/_$$//'` $(am__append_1)
 OFILES = @mpn_objects@
 noinst_LTLIBRARIES = libmpn.la
 nodist_libmpn_la_SOURCES = fib_table.c mp_bases.c

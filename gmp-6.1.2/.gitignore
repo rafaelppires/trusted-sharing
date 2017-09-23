@@ -20,3 +20,5 @@ gmp-mparam.h
 gmp.h
 libtool
 mp_bases.h
+build-sgx
+build-ntv
