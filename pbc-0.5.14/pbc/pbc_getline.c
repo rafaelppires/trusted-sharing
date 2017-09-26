@@ -1,4 +1,7 @@
 #include <stdio.h>
+#ifdef ENABLE_SGX
+#include <libc_mock/libc_proxy.h>
+#endif
 #include <string.h>
 
 #include "pbc_memory.h"

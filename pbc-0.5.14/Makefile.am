@@ -59,6 +59,9 @@ libpbc_la_SOURCES = arith/field.c arith/z.c \
 	ecc/f_param.c ecc/g_param.c
 libpbc_la_LDFLAGS = -lgmp -lm -version-info $(SO_VERSION) $(PBC_LDFLAGS) $(LIBPBC_LDFLAGS)
 
+export SGXSDKPATH = /opt/intel/sgxsdk
+export SGXCOMMONPATH = @sgxcommon_path@
+
 # LDADD is fallback of program_LDADD
 # explicit "-lgmp" fixes error of "undefined reference to GMP symbol"
 # explicit "-lm" fixes error of "undefined reference to libm symbol"
@@ -86,3 +89,9 @@ guru_ternary_extension_field_test_CPPFLAGS = -I include
 guru_ternary_extension_field_test_SOURCES = guru/ternary_extension_field_test.c
 guru_eta_T_3_test_CPPFLAGS = -I include
 guru_eta_T_3_test_SOURCES = guru/eta_T_3_test.c
+
+if SGXENABLED
+libpbc_la_CPPFLAGS += -DENABLE_SGX -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
+#pbc_pbc_CPPFLAGS += -DENABLE_SGX -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
+endif
+

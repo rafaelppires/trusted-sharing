@@ -146,6 +146,20 @@ AC_ARG_ENABLE( debug,
                               [with_debug=y],
                               [with_debug=n])
 
+AC_ARG_ENABLE(sgx,
+AC_HELP_STRING([--enable-sgx],[enable SGX compilation [default=no]]),
+[case $enableval in
+yes|no) ;;
+*) AC_MSG_ERROR([bad value $enableval for --enable-sgx, need yes or no]) ;;
+esac],
+[enable_sgx=no])
+
+AM_CONDITIONAL([SGXENABLED], [test "$enable_sgx" = "yes"])
+if test "$enable_sgx" = "yes"; then
+  AC_DEFINE(ENABLE_SGX,1,
+  [Define to 1 to ENABLE_SGX, per --enable-sgx])
+fi
+
 CFLAGS="$CFLAGS -Wall -W -Wfloat-equal -Wpointer-arith -Wcast-align -Wstrict-prototypes -Wredundant-decls \
 -Wendif-labels -Wshadow -pipe -ffast-math -U__STRICT_ANSI__ -std=gnu99"
 if test "$with_debug" == "y"; then
@@ -164,6 +178,8 @@ fi
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([floor gettimeofday memmove memset pow sqrt strchr strdup])
+
+AC_SUBST([sgxcommon_path],[$(realpath ${srcdir}/../../sgx_common)])
 
 AC_CONFIG_FILES([Makefile example/Makefile gen/Makefile])
 AC_OUTPUT

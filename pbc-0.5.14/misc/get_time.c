@@ -1,4 +1,8 @@
+#ifdef ENABLE_SGX
+#include <libc_mock/libc_proxy.h>
+#else
 #include <sys/time.h>
+#endif
 #include <time.h>
 
 double pbc_get_time(void) {
