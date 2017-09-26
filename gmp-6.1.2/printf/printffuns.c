@@ -32,6 +32,10 @@ You should have received copies of the GNU General Public License and the
 GNU Lesser General Public License along with the GNU MP Library.  If not,
 see https://www.gnu.org/licenses/.  */
 
+#ifdef ENABLE_SGX
+#include <libc_mock/libc_proxy.h>
+#endif
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>

@@ -116,6 +116,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@SGXENABLED_TRUE@am__append_1 = -DENABLE_SGX -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
 subdir = rand
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -361,7 +362,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir)
+AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir) $(am__append_1)
 noinst_LTLIBRARIES = librandom.la
 librandom_la_SOURCES = randmt.h						\
   rand.c randclr.c randdef.c randiset.c randlc2s.c randlc2x.c randmt.c	\

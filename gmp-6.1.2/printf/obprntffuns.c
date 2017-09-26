@@ -35,6 +35,10 @@ see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
+#ifdef ENABLE_SGX
+#undef HAVE_OBSTACK_VPRINTF
+#endif
+
 #if HAVE_OBSTACK_VPRINTF
 
 #define _GNU_SOURCE   /* ask glibc <stdio.h> for obstack_vprintf */

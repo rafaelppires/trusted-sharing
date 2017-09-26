@@ -187,6 +187,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@SGXENABLED_TRUE@am__append_1 = -DENABLE_SGX -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -618,7 +619,7 @@ DISTCLEANFILES = $(BUILT_SOURCES) config.m4 @gmp_srclinks@ \
 	gen-jacobitab$(EXEEXT_FOR_BUILD) gen-psqr$(EXEEXT_FOR_BUILD)
 
 # Tell gmp.h it's building gmp, not an application, used by windows DLL stuff.
-AM_CPPFLAGS = -D__GMP_WITHIN_GMP 
+AM_CPPFLAGS = -D__GMP_WITHIN_GMP $(am__append_1)
 MPF_OBJECTS = mpf/init$U.lo mpf/init2$U.lo mpf/inits$U.lo mpf/set$U.lo	    \
   mpf/set_ui$U.lo mpf/set_si$U.lo mpf/set_str$U.lo mpf/set_d$U.lo	    \
   mpf/set_z$U.lo mpf/iset$U.lo mpf/iset_ui$U.lo mpf/iset_si$U.lo	    \

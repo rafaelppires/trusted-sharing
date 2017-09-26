@@ -43,6 +43,14 @@ see https://www.gnu.org/licenses/.  */
 #include <stdio.h>     /* for NULL */
 #include <stdlib.h>
 
+#ifdef ENABLE_SGX
+#undef HAVE_INTTYPES_H
+#undef HAVE_STDINT_H
+#undef HAVE_LANGINFO_H
+#undef HAVE_LOCALE_H
+typedef long long quad_t;
+#endif
+
 #if HAVE_INTTYPES_H
 # include <inttypes.h> /* for intmax_t */
 #else

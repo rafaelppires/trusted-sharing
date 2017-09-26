@@ -30,6 +30,10 @@ see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
+#ifdef ENABLE_SGX
+#undef HAVE_OBSTACK_VPRINTF
+#endif
+
 #if HAVE_OBSTACK_VPRINTF
 
 #include <stdarg.h>
