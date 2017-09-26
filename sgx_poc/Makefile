@@ -3,124 +3,173 @@ CXX            := g++-5
 SHELL          := /bin/bash
 SGX            := 0
 
-SRCDIR         := src
-SGX_COMMONDIR  := ../../sgx_common
-PBCDIR         := ../pbc-0.5.14
-GMPDIR         := ../gmp-6.1.2
-INCLUDEDIRS := $(SRCDIR) $(SGX_COMMONDIR) $(PBCDIR)/include/ $(GMPDIR)/
+SrcDir         := src
+SGX_COMMONDIR  := $(realpath ../../sgx_common)
+PBCRootDir     := $(realpath ../pbc-0.5.14)
+GMPRootDir     := $(realpath ../gmp-6.1.2)
 
+SgxToken       := sgx
+NativeToken    := ntv
+
+CFlags         := -m64
+CPPFlags       := -std=c++11
 CURVES_ENCLAVE := curves
 TARGET         := $(CURVES_ENCLAVE)
-CPPOBJS        := $(TARGET).o ocalls.o
+Untrusted_Objs := $(TARGET).o
 ENCLAVENAME    := enclave_$(TARGET)
-LIBDIRS        := $(PBCDIR)/.libs $(GMPDIR)/.libs
-LIBS           := pbc gmp
+ExternalLibs   := pbc gmp sgx_tstdc 
 
 ifeq ($(SGX),1)
-BINDIR := sgx_bin
-OBJDIR := sgx_obj
-TRUSTEDOBJS          := $(ENCLAVENAME)_t.o ecalls_curves.o
+BuildToken  := $(SgxToken)
+else
+BuildToken  := $(NativeToken)
+endif
+
+GMPDir  := $(GMPRootDir)/build-$(BuildToken)
+PBCDir  := $(PBCRootDir)/build-$(BuildToken)
+GMPLib  := $(GMPDir)/.libs/libgmp.a
+PBCLib  := $(PBCDir)/.libs/libpbc.a
+ExtLibs := $(PBCLib) $(GMPLib)
+BinDir  := bin-$(BuildToken)
+ObjDir  := obj-$(BuildToken)
+
+ifeq ($(SGX),1)
+TRUSTEDOBJS          := $(ENCLAVENAME)_t.o ecalls_curves.o \
+                        libc_proxy_t.o file_mock_t.o sdk_deprecated_t.o
 SGX_SDK              := /opt/intel/sgxsdk
 SGX_LIBRARY_PATH     := $(SGX_SDK)/lib64
 SGX_ENCLAVE_SIGNER   := $(SGX_SDK)/bin/x64/sgx_sign
 SGX_EDGER8R          := $(SGX_SDK)/bin/x64/sgx_edger8r
 Trts_Library_Name    := sgx_trts
 Service_Library_Name := sgx_tservice
-App_Lib_Dirs         := $(SGX_LIBRARY_PATH) $(LIBDIRS)
-App_Libs             := sgx_uae_service sgx_urts $(LIBS)
-App_Link_Flags       := -m64 $(addprefix -L, $(App_Lib_Dirs)) \
-                             $(addprefix -l, $(App_Libs))
-CFLAGS               += -DENABLE_SGX
-INCLUDEDIRS          += $(SGX_SDK)/include
-CPPOBJS              := $(filter-out $(TRUSTEDOBJS), $(CPPOBJS)) \
+App_Lib_Dirs         := $(SGX_LIBRARY_PATH) 
+App_Libs             := sgx_uae_service sgx_urts 
+CFlags               += -DENABLE_SGX
+IncludeDirs          += $(SGX_SDK)/include
+Untrusted_Objs       += ocalls.o
+Untrusted_Objs       := $(filter-out $(TRUSTEDOBJS), $(Untrusted_Objs)) \
 	                    $(ENCLAVENAME)_u.o
-SGXCOMOBJS := $(addprefix $(OBJDIR)/, sgx_initenclave.o sgx_errlist.o)
-Trusted_Link_Flags := -m64 -Wl,--no-undefined -nostdlib \
-	-nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH)  \
-	-Wl,--whole-archive -l$(Trts_Library_Name) -Wl,--no-whole-archive \
-	-Wl,--start-group -lsgx_tstdc -lsgx_tstdcxx -lsgx_tcrypto \
-	-l$(Service_Library_Name) -Wl,--end-group \
+SGXCOMOBJS := $(addprefix $(ObjDir)/, sgx_initenclave.o sgx_errlist.o)
+Enclave_Lib_Dirs     := $(SGX_LIBRARY_PATH) $(dir $(ExtLibs))
+Enclave_Libs         := 
+Enclave_SDK_Libs     := -Wl,--whole-archive \
+                            -l$(Trts_Library_Name) \
+                        -Wl,--no-whole-archive \
+                        -Wl,--start-group \
+                             $(addprefix -l, sgx_tstdc sgx_tstdcxx sgx_tcrypto \
+                                             $(Service_Library_Name) ) \
+                        -Wl,--end-group
+Enclave_Link_Flags   := $(addprefix -L, $(Enclave_Lib_Dirs)) \
+                        $(addprefix -l, $(Enclave_Libs)) \
+                        $(Enclave_SDK_Libs)
+Trusted_Link_Flags := -Wl,--no-undefined -nostdlib \
+	-nodefaultlibs -nostartfiles $(Enclave_Link_Flags)  \
 	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined \
 	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic  \
 	-Wl,--defsym,__ImageBase=0 \
-	-Wl,--version-script=$(SRCDIR)/$(ENCLAVENAME).lds
-Common_C_Cpp_Flags := $(CFLAGS) -nostdinc -fvisibility=hidden \
+	-Wl,--version-script=$(SrcDir)/$(ENCLAVENAME).lds \
+    $(addprefix -l, $(ExternalLibs))
+Common_C_Cpp_Flags := $(CFlags) -nostdinc -fvisibility=hidden \
 	                  -fpie -fstack-protector -fno-builtin-printf
 Enclave_C_Flags   := -Wno-implicit-function-declaration -std=c11 \
 	                 $(Common_C_Cpp_Flags)
-Enclave_Cpp_Flags := $(Common_C_Cpp_Flags) -I$(SGX_SDK)/include/stlport \
-	                 -std=c++11 -nostdinc++
-Enclave_IncDirs   := $(SRCDIR) $(SGX_SDK)/include $(SGX_SDK)/include/tlibc \
-	                 $(SGX_COMMONDIR)
+Enclave_Cpp_Flags := $(Common_C_Cpp_Flags) $(CPPFlags) -nostdinc++
+Enclave_IncDirs   := $(SGX_SDK)/include/stlport $(SrcDir) $(SGX_SDK)/include \
+                     $(SGX_SDK)/include/tlibc $(SGX_COMMONDIR) \
+                     $(PBCRootDir)/include $(GMPDir)
 Enclave_Include   := $(addprefix -I, $(Enclave_IncDirs))
 App_Cpp_Objs      := $(SGXCOMOBJS)
-Trusted_Objects   := $(addprefix $(OBJDIR)/,$(TRUSTEDOBJS))
-all: $(BINDIR)/$(TARGET) $(BINDIR)/$(TARGET).signed.so
-$(addprefix $(OBJDIR)/,server_protocol.o $(TARGET).o): $(SRCDIR)/$(ENCLAVENAME)_u.c
-$(OBJDIR)/query_manager.o : $(SRCDIR)/$(ENCLAVENAME)_t.c
+Trusted_Objects   := $(addprefix $(ObjDir)/,$(TRUSTEDOBJS))
+GMPConfigFlags    := --with-pic=yes --enable-shared=no --enable-sgx
+all: $(BinDir)/$(TARGET) $(BinDir)/$(TARGET).signed.so
+$(addprefix $(ObjDir)/,server_protocol.o $(TARGET).o): $(SrcDir)/$(ENCLAVENAME)_u.c
+$(ObjDir)/query_manager.o : $(SrcDir)/$(ENCLAVENAME)_t.c
 else
-BINDIR := ntv_bin
-OBJDIR := ntv_obj
-all: $(BINDIR)/$(TARGET)
+App_Lib_Dirs := $(dir $(ExtLibs))
+App_Libs     := $(ExternalLibs)
+LDFLAGS      := -static
+all: $(BinDir)/$(TARGET)
 endif
 
-App_Include  := $(addprefix -I,$(INCLUDEDIRS))
-App_Cpp_Objs += $(addprefix $(OBJDIR)/, $(CPPOBJS))
+IncludeDirs    += $(SrcDir) $(SGX_COMMONDIR) $(PBCRootDir)/include/ $(GMPDir)/
+App_Include    := $(addprefix -I, $(IncludeDirs))
+App_Link_Flags := $(addprefix -L, $(App_Lib_Dirs)) \
+                  $(addprefix -l, $(App_Libs))
+App_Cpp_Objs   += $(addprefix $(ObjDir)/, $(Untrusted_Objs))
 
 
 sgx_curves: $(CURVES_ENCLAVE) curves
+$(ObjDir)/$(TARGET).o : $(GMPDir)/gmp.h
 
 ############## UNTRUSTED #######################################################
-$(BINDIR)/$(TARGET): ${App_Cpp_Objs} | $(BINDIR)
+$(BinDir)/$(TARGET): ${App_Cpp_Objs} ${ExtLibs} | $(BinDir)
 	@${CXX} $^ -o $@ ${App_Link_Flags} ${LDFLAGS}
 	@echo -e "LINK (App)\t=>\t$@"
 
-$(OBJDIR)/%.o : $(SRCDIR)/%.c | $(OBJDIR)
-	@${CC} ${CFLAGS} ${App_Include} -c $< -o $@
+$(ObjDir)/%.o : $(SrcDir)/%.c | $(ObjDir)
+	@${CC} ${CFlags} ${App_Include} -c $< -o $@
 	@echo -e "CC (App)\t<=\t$<"
 
-$(OBJDIR)/%.o : $(SRCDIR)/%.cpp | $(OBJDIR)
-	@${CXX} -std=c++11 ${CFLAGS} ${App_Include} -c $< -o $@
+$(ObjDir)/%.o : $(SrcDir)/%.cpp | $(ObjDir)
+	@${CXX} ${CPPFlags} ${CFlags} ${App_Include} -c $< -o $@
 	@echo -e "CXX (App)\t<=\t$<"
 
-$(SGXCOMOBJS) : $(OBJDIR)/%.o : $(SGX_COMMONDIR)/%.cpp | $(OBJDIR)
-	@${CXX} -std=c++11 ${CFLAGS} ${App_Include} -c $< -o $@
+$(SGXCOMOBJS) : $(ObjDir)/%.o : $(SGX_COMMONDIR)/%.cpp | $(ObjDir)
+	@${CXX} ${CPPFlags} ${CFlags} ${App_Include} -c $< -o $@
 	@echo -e "CXX (App)\t<=\t$<"
 
-$(SRCDIR)/$(ENCLAVENAME)_u.c : $(SRCDIR)/$(ENCLAVENAME).edl $(SGX_EDGER8R)
+$(SrcDir)/$(ENCLAVENAME)_u.c : $(SrcDir)/$(ENCLAVENAME).edl $(SGX_EDGER8R)
 	@cd $(dir $@) && $(SGX_EDGER8R) --untrusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
 	@echo -e "EDGER (App)\t=>\t$@"
 
 ############## TRUSTED #########################################################
-$(BINDIR)/$(TARGET).signed.so : %.signed.so : %.so
-	@$(SGX_ENCLAVE_SIGNER) sign -enclave $< -config $(SRCDIR)/$(ENCLAVENAME).config.xml -out $@ -key $(SRCDIR)/enclave-key.pem
+$(BinDir)/$(TARGET).signed.so : %.signed.so : %.so
+	@$(SGX_ENCLAVE_SIGNER) sign -enclave $< -config $(SrcDir)/$(ENCLAVENAME).config.xml -out $@ -key $(SrcDir)/enclave-key.pem
 	@echo -e "SIGN (Enclave)\t=>\t$@"
 
-$(BINDIR)/$(TARGET).so : $(Trusted_Objects)
-	@$(CXX) $^ -o $@ $(Trusted_Link_Flags)
+$(BinDir)/$(TARGET).so : $(Trusted_Objects)
+	$(CXX) $^ -o $@ $(Trusted_Link_Flags)
 	@echo -e "LINK (Enclave)\t=>\t$@"
 
-$(SRCDIR)/$(ENCLAVENAME)_t.c : $(SRCDIR)/$(ENCLAVENAME).edl $(SGX_EDGER8R)
+$(SrcDir)/$(ENCLAVENAME)_t.c : $(SrcDir)/$(ENCLAVENAME).edl $(SGX_EDGER8R)
 	@cd $(dir $@) && $(SGX_EDGER8R) --trusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
 	@echo -e "EDGER (Enclave)\t=>\t$@"
 
-$(OBJDIR)/$(ENCLAVENAME)_t.o : $(SRCDIR)/$(ENCLAVENAME)_t.c
+$(ObjDir)/$(ENCLAVENAME)_t.o : $(SrcDir)/$(ENCLAVENAME)_t.c
 	@${CC} -c $< -o $@ ${Enclave_C_Flags} ${Enclave_Include} 
 	@echo -e "CC (Enclave)\t<=\t$<"
 
-$(filter-out %_t.o, $(Trusted_Objects)) : $(OBJDIR)/%.o : $(SRCDIR)/%.cpp
+$(ObjDir)/%_t.o : $(SGX_COMMONDIR)/libc_mock/%.c
+	@${CC} -c $< -o $@ ${Enclave_C_Flags} ${Enclave_Include} 
+	@echo -e "CC (Enclave)\t<=\t$<"
+
+$(ObjDir)/%_t.o : $(SGX_COMMONDIR)/libc_mock/%.cpp
+	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_Cpp_Flags}
+	@echo -e "CXX (Enclave)\t<=\t$<"
+
+$(filter-out %_t.o, $(Trusted_Objects)) : $(ObjDir)/%.o : $(SrcDir)/%.cpp
 	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_Cpp_Flags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 ################################################################################
+$(PBCLib) : $(GMPLib)
+	rm -rf $(PBCDir) && mkdir -p $(PBCDir) && cd $(PBCDir) && LDFLAGS="-L$(GMPDir)/.libs" CPPFLAGS="-I$(PBCRootDir)/include -I$(GMPDir)" ../configure && make
 
-$(BINDIR):
-	@mkdir $(BINDIR)
+$(GMPLib) : $(GMPDir)/gmp.h
+	cd $(GMPDir) && make
 
-$(OBJDIR):
-	@mkdir $(OBJDIR)
+$(GMPDir)/gmp.h :
+	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(GMPConfigFlags) && sed -i '39,42{s/^\/\///}' gmp.h
+
+################################################################################
+
+$(BinDir):
+	@mkdir $(BinDir)
+
+$(ObjDir):
+	@mkdir $(ObjDir)
 
 .PHONY: clean
 
 clean:
-	rm -rf $(BINDIR) $(OBJDIR) $(SRCDIR)/*_{t,u}.{c,h} 
+	rm -rf $(BinDir) $(ObjDir) $(SrcDir)/*_{t,u}.{c,h} 
 

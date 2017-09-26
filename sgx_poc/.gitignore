@@ -1,5 +1,5 @@
 *.swp
-ntv_obj
-ntv_bin
-sgx_obj
-sgx_bin
+obj-ntv
+bin-ntv
+obj-sgx
+bin-sgx
