@@ -2,7 +2,7 @@
 
 extern "C" {
 void ocall_print( const char *str ) {
-    printf("[%s]\n",str);
+    printf("\033[32;1m|\033[0m %s",str);
 }
 }
 

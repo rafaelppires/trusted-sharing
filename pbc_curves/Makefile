@@ -18,8 +18,6 @@ endif
 all: $(TARGET).c
 	$(CC) $(TARGET).c -o $(TARGET) $(INCLUDE) $(LINK) -static
 
-.PHONY: gmp pbc clean
-
 gmp:
 	cd $(GMPDIR) && $(MAKE) clean || true && ./configure && $(MAKE)
 
@@ -27,4 +25,7 @@ pbc: gmp
 	cd $(PBCDIR) && $(MAKE) clean || true && LDFLAGS="-L$(realpath $(GMPDIR)/.libs/)" CPPFLAGS="-I$(realpath $(GMPDIR))" ./configure && $(MAKE)
 
 clean:
-	rm $(TARGET) *.param *.txt
+	rm -rf $(TARGET) a_224_1024.param a_256_1536.txt 
+
+.PHONY: all gmp pbc clean
+
