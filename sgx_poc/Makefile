@@ -17,7 +17,7 @@ CURVES_ENCLAVE := curves
 TARGET         := $(CURVES_ENCLAVE)
 Untrusted_Objs := $(TARGET).o
 ENCLAVENAME    := enclave_$(TARGET)
-ExternalLibs   := pbc gmp sgx_tstdc 
+ExternalLibs   := pbc gmp 
 
 ifeq ($(SGX),1)
 BuildToken  := $(SgxToken)
@@ -25,11 +25,13 @@ else
 BuildToken  := $(NativeToken)
 endif
 
-GMPDir  := $(GMPRootDir)/build-$(BuildToken)
-PBCDir  := $(PBCRootDir)/build-$(BuildToken)
-GMPLib  := $(GMPDir)/.libs/libgmp.a
-PBCLib  := $(PBCDir)/.libs/libpbc.a
-ExtLibs := $(PBCLib) $(GMPLib)
+GMPDir          := $(GMPRootDir)/build-$(BuildToken)
+PBCDir          := $(PBCRootDir)/build-$(BuildToken)
+GMPLib          := $(GMPDir)/.libs/libgmp.a
+PBCLib          := $(PBCDir)/.libs/libpbc.a
+ExtLibs         := $(PBCLib) $(GMPLib)
+LibsConfigFlags := --with-pic=yes --enable-shared=no
+
 BinDir  := bin-$(BuildToken)
 ObjDir  := obj-$(BuildToken)
 
@@ -68,7 +70,7 @@ Trusted_Link_Flags := -Wl,--no-undefined -nostdlib \
 	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic  \
 	-Wl,--defsym,__ImageBase=0 \
 	-Wl,--version-script=$(SrcDir)/$(ENCLAVENAME).lds \
-    $(addprefix -l, $(ExternalLibs))
+    $(addprefix -l, $(ExternalLibs) sgx_tstdc)
 Common_C_Cpp_Flags := $(CFlags) -nostdinc -fvisibility=hidden \
 	                  -fpie -fstack-protector -fno-builtin-printf
 Enclave_C_Flags   := -Wno-implicit-function-declaration -std=c11 \
@@ -80,7 +82,7 @@ Enclave_IncDirs   := $(SGX_SDK)/include/stlport $(SrcDir) $(SGX_SDK)/include \
 Enclave_Include   := $(addprefix -I, $(Enclave_IncDirs))
 App_Cpp_Objs      := $(SGXCOMOBJS)
 Trusted_Objects   := $(addprefix $(ObjDir)/,$(TRUSTEDOBJS))
-GMPConfigFlags    := --with-pic=yes --enable-shared=no --enable-sgx
+LibsConfigFlags   += --enable-sgx
 all: $(BinDir)/$(TARGET) $(BinDir)/$(TARGET).signed.so
 $(addprefix $(ObjDir)/,server_protocol.o $(TARGET).o): $(SrcDir)/$(ENCLAVENAME)_u.c
 $(ObjDir)/query_manager.o : $(SrcDir)/$(ENCLAVENAME)_t.c
@@ -152,13 +154,16 @@ $(filter-out %_t.o, $(Trusted_Objects)) : $(ObjDir)/%.o : $(SrcDir)/%.cpp
 	@echo -e "CXX (Enclave)\t<=\t$<"
 ################################################################################
 $(PBCLib) : $(GMPLib)
-	rm -rf $(PBCDir) && mkdir -p $(PBCDir) && cd $(PBCDir) && LDFLAGS="-L$(GMPDir)/.libs" CPPFLAGS="-I$(PBCRootDir)/include -I$(GMPDir)" ../configure && make
+	rm -rf $(PBCDir) && mkdir -p $(PBCDir) && cd $(PBCDir) && LDFLAGS="-L$(GMPDir)/.libs" CPPFLAGS="-I$(PBCRootDir)/include -I$(GMPDir)" ../configure $(LibsConfigFlags) && make
 
 $(GMPLib) : $(GMPDir)/gmp.h
 	cd $(GMPDir) && make
 
-$(GMPDir)/gmp.h :
-	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(GMPConfigFlags) && sed -i '39,42{s/^\/\///}' gmp.h
+$(GMPRootDir)/build-$(SgxToken)/gmp.h :
+	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(LibsConfigFlags) && sed -i '39,42{s/^\/\///}' gmp.h
+
+$(GMPRootDir)/build-$(NativeToken)/gmp.h :
+	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(LibsConfigFlags)
 
 ################################################################################
 
@@ -168,8 +173,13 @@ $(BinDir):
 $(ObjDir):
 	@mkdir $(ObjDir)
 
-.PHONY: clean
+.PHONY: clean clean-libs clean-all
 
 clean:
 	rm -rf $(BinDir) $(ObjDir) $(SrcDir)/*_{t,u}.{c,h} 
+
+clean-libs:
+	rm -rf $(PBCDir) $(GMPDir)
+
+clean-all: clean clean-libs
 
