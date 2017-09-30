@@ -1,5 +1,6 @@
 #include <pbc.h>
 #include <enclave_curves_t.h>
+#include <libc_mock/file_mock.h>
 
 extern "C" {
 int printf(const char *fmt, ...) {
@@ -15,8 +16,17 @@ int printf(const char *fmt, ...) {
 
 //====================== ECALLS ================================================
 void ecall_handlerequest( int a, int b ) {
-    printf("hallo\n");
     pbc_param_t par;
-    pbc_param_init_a_gen(par, 224, 1024);
+    pbc_param_init_a_gen(par, a, b);
+
+    char buf[1024];
+    snprintf(buf,sizeof(buf),"a_%d_%d.txt",a,b);
+    fmock_allow_writable( buf );
+    FILE *pf = fopen(buf,"w");
+    pbc_param_out_str(pf, par);
+    fmock_flush(buf,sizeof(buf),pf);
+    fclose(pf);
+
+    printf(buf);
 }
 
