@@ -1,5 +1,5 @@
-#include "ibbe.h"
-#include "spibbe.h"
+#include "sgx_ibbe.h"
+#include "sgx_spibbe.h"
 #include "tests.h"
 #include "admin_api.h"
 #include "hybrid_api.h"
@@ -20,10 +20,60 @@ void generate_members(std::vector<std::string>& members, int start, int end)
 }
 
 /*
+ * Test the SPIBBE methods at SGX level. No cloud involved. 
+ */
+void sgx_level_bvt(int argc, char** argv)
+{
+    printf("Testing SGX_LEVEL_BVT ...");
+    
+    //
+    int g_size = 1905;
+    int p_size = 200;
+    
+    // system set-up
+    PublicKey pubKey;
+    MasterSecretKey msk;
+    ShortPublicKey shortPubKey;
+    setup_sgx_safe(&pubKey, &shortPubKey, &msk,
+        p_size, argc, argv);
+
+    // generate mock members
+    std::vector<std::string> members;
+    generate_members(members, 0, g_size);
+
+    // create group
+    std::vector<SpibbePartition> partitions;
+    
+    // >>>>>>>> GO TO SGX ENCLAVE
+    // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    unsigned char* g_key = sp_ibbe_create_group(
+        partitions,
+        shortPubKey, msk,
+        members,
+        p_size);      
+    // >>>>>>>> RETURN FROM SGX ENCLAVE
+    // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        
+    if (partitions.size() != 10)
+    {
+        printf("TEST FAILED !!!\n");
+        return;
+    }
+    if (partitions[9].members.size() != 105)
+    {
+        printf("TEST FAILED %d !!!\n", partitions[9].members.size());
+        return;
+    }
+    
+    printf("\033[32;1m TEST PASSED \033[0m\n");
+}
+
+/*
  * Test that the scheme works for a single user too, not only for groups.
  */
 void ftest_one_user(int argc, char** argv)
 {
+    /*
     printf("SP-IBBE FUNCTIONL TEST ftest_one_user ...");
 
     // system set-up
@@ -37,10 +87,9 @@ void ftest_one_user(int argc, char** argv)
     generate_members(members, 0, 1);
 
     // create group
-    std::vector<EncryptedGroupKey> gpKeys;
-    std::vector<Ciphertext> gpCiphers;
+    std::vector<SpibbePartition> partitions;
     sp_ibbe_create_group(
-        gpKeys, gpCiphers,
+        partitions,
         shortPubKey, msk,
         members,
         10);
@@ -59,7 +108,7 @@ void ftest_one_user(int argc, char** argv)
         members[0],
         members,
         10);
-
+*/
     // TODO : we can't properly check the result unless :
     //      1. the second line of sp_ibbe_create_group is uncommented
     //      2. the line bellow is uncommented
@@ -74,6 +123,7 @@ void ftest_one_user(int argc, char** argv)
  */
 void ftest_create_group_decrypt_all(int argc, char** argv, int g_size, int p_size)
 {
+    /*
     printf("SP-IBBE FUNCTIONL TEST create_group_decrypt_all ...");
 
     // system set-up
@@ -123,6 +173,8 @@ void ftest_create_group_decrypt_all(int argc, char** argv, int g_size, int p_siz
         }
     }
     printf("\033[32;1m TEST PASSED \033[0m\n");
+
+ */ 
 }
 
 
@@ -131,6 +183,7 @@ void ftest_create_group_decrypt_all(int argc, char** argv, int g_size, int p_siz
  */
 void ftest_add_users_decrypt_all(int argc, char** argv, int g_size, int p_size)
 {
+    /*
     printf("SP-IBBE FUNCTIONL TEST ftest_add_users_decrypt_all ...");
     // system set-up
     PublicKey pubKey;
@@ -191,13 +244,15 @@ void ftest_add_users_decrypt_all(int argc, char** argv, int g_size, int p_size)
         }
     }
     printf ("\033[32;1m TEST PASSED \033[0m\n");
-}
+
+ */ }
 
 /*
  * Test that incementaly removing users results in the same group key for the remaining users.
  */
 void ftest_remove_decrypt_all(int argc, char** argv, int g_size, int p_size)
 {
+    /*
     printf("SP-IBBE FUNCTIONL TEST ftest_remove_decrypt_all ...");
     
     PublicKey pubKey;
@@ -259,10 +314,12 @@ void ftest_remove_decrypt_all(int argc, char** argv, int g_size, int p_size)
             break;
     }
     printf ("\033[32;1m TEST PASSED \033[0m\n");
-}
+
+ */ }
 
 void admin_api(int g_size, int p_size)
 {
+    /*
     Configuration::UsersPerPartition = p_size;
     SpibbeApi admin("master", new RedisCloud());
     
@@ -272,10 +329,21 @@ void admin_api(int g_size, int p_size)
     admin.CreateGroup("friends", members);
     //admin.AddUserToGroup("friends", "jim");
     //admin.RemoveUserFromGroup("friends", "bob");
+
+ */
 }
 
 void micro_create_group(AdminApi* admin)
 {
+    /*
+    // HACK
+    std::vector<std::string> members;
+    generate_members(members, 0, 10000);
+    admin->CreateGroup("pau_friends", members);
+
+    return;
+
+    // OLD CODE:
     int g_size = 16;
     int p_size = 2000;
     
@@ -296,10 +364,12 @@ void micro_create_group(AdminApi* admin)
 
         g_size = g_size * 2;
     }
+     */
 }
 
 void micro_add_user(AdminApi* admin)
 {
+    /*
     int g_size = 16;
     int p_size = 2000;
     
@@ -329,10 +399,12 @@ void micro_add_user(AdminApi* admin)
 
         g_size = g_size * 2;
     }
+     */
 }
 
 void micro_remove_user(AdminApi* admin)
 {
+    /*
     int g_size = 16;
     int p_size = 2000;
     
@@ -357,31 +429,25 @@ void micro_remove_user(AdminApi* admin)
 
         g_size = g_size * 2;
     }
+     */
 }
 
-void micro_decrypt_key(AdminApi* admin, UserApi* user)
+void test_admin_replay()
 {
-    int g_size = 16;
-    int p_size = 2000;
+    // TODO : eventualy this method goes to tests.cpp
+    Configuration::UsersPerPartition = 2000;
+    Cloud* c = new DropboxCloud();
+    std::string a = "master";
+    std::string g = "jura";
  
-    for (int i=0; i<MICRO_POINTS; i++)
-    {
-        if (g_size > p_size)
-        {
-            Configuration::UsersPerPartition = p_size;
-        }
-        else
-        {
-            Configuration::UsersPerPartition = g_size;
-        }
-        
-        // generate a group of desired size
-        std::vector<std::string> members;
-        generate_members(members, 0, g_size);
-        admin->CreateGroup("friends", members);
+ 
+   SpibbeApi* admin = new SpibbeApi(a, c);
+
+
+    std::vector<std::string> members;
+    generate_members(members, 0, 13245);
     
-        GroupKey groupKey;
-        user->GetGroupKey("friends", &groupKey);
-        g_size = g_size * 2;
-    }
+    admin->CreateGroup(g, members);
+    admin->AddUserToGroup(g, "stefan");
+    admin->RemoveUserFromGroup(g, "stefan");
 }

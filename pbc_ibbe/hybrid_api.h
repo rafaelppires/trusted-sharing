@@ -1,8 +1,8 @@
 #ifndef HYBRID_API_H
 #define HYBRID_API_H
 
-#include "ibbe.h"
-#include "spibbe.h"
+#include "sgx_ibbe.h"
+#include "sgx_spibbe.h"
 #include "cloud.h"
 #include "admin_api.h"
 

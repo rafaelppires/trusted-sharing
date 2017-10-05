@@ -3,6 +3,12 @@
 
 #include "admin_api.h"
 
+/* 
+ * BASIC VALIDATION TESTS
+ */ 
+void sgx_level_bvt(int argc, char** argv);
+
+
 /*
  *   FUNCTIONAL TESTS
  */
@@ -14,15 +20,13 @@ void ftest_add_remove_decrypt_all(int argc, char** argv, int g_size, int p_size)
 
 void admin_api(int g_size, int p_size);
 
-/*
- *   PERFORMANCE TESTS
- */
+void test_admin_replay();
+
 
 // MICROBENCHMARKS
 void micro_create_group(AdminApi* adminApi);
 void micro_add_user(AdminApi* adminApi);
 void micro_remove_user(AdminApi* adminApi);
-void micro_decrypt_key(AdminApi* adminApi, UserApi* userApi);
 
 // TESTS_H
 #endif

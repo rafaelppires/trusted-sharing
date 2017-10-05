@@ -79,15 +79,6 @@ int decrypt_with_key_sgx_safe(BroadcastKey* bKey, Ciphertext cipher,
     ShortPublicKey pubKey, MasterSecretKey msk, UserPrivateKey ikey,
     char* id, char idSet[][MAX_STRING_LENGTH], int idCount);
 
-/* NON-SGX METHODS - FOR USER USE */
-int decrypt_user(BroadcastKey* bKey,
-    Ciphertext cipher, PublicKey key, UserPrivateKey ikey,
-    const char* id, char idSet[][MAX_STRING_LENGTH], int idCount);
-
-int decrypt_user_no_optimizations(BroadcastKey* bKey,
-    Ciphertext cipher, PublicKey key, UserPrivateKey ikey,
-    char* id, char idSet[][MAX_STRING_LENGTH], int idCount);
-
 #if defined (__cplusplus)
 }
 #endif

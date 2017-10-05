@@ -1,5 +1,5 @@
 #include "hybrid_api.h"
-#include "hybrid_sgx.h"
+#include "sgx_hybrid.h"
 #include "serialization.h"
 #include "microbench.h"
 
@@ -40,7 +40,10 @@ void HybridApi::CreateGroup(std::string groupName, std::vector<std::string> grou
 #ifdef MICRO_CREATE
     start_clock
 #endif 
-    this->cloud->put_text(get_group_members_key(groupName), s_members);
+    //this->cloud->put_text(get_group_members_key(groupName), s_members);
+    //this->cloud->put_text(get_group_meta_key(groupName), s_meta);
+    // Stefan HACK: we have to converge to a single (members, meta) entity
+    s_meta = "HYBRID_RSA\n" + s_members + "\n" + s_meta;
     this->cloud->put_text(get_group_meta_key(groupName), s_meta);
 #ifdef MICRO_CREATE
     end_clock(m2)
@@ -163,47 +166,5 @@ void HybridApi::RemoveUserFromGroup(std::string groupName, std::string userName)
 #ifdef MICRO_REMOVE
     end_clock(m4)
     printf("%s_REMOVE_MEMBER,%d,%f,%f,%f,%f,%f\n", useRsa ? "RSA" : "ECC", members.size(), m0, m1, m2, m3, m4);
-#endif 
-}
-
-HybridUserApi::HybridUserApi(std::string user_name, Cloud* cloud)
-{
-    this->user_name = user_name;
-    this->cloud = cloud;
-}
-
-void HybridUserApi::GetGroupKey(std::string groupName, GroupKey* groupKey)
-{
-#ifdef MICRO_DECRYPT
-    struct timespec start, finish;
-    start_clock
-#endif 
-    // retreive data from cloud
-    std::string s_members = this->cloud->get_text(get_group_members_key(groupName));
-    std::string s_meta = this->cloud->get_text(get_group_meta_key(groupName));
-#ifdef MICRO_DECRYPT
-    end_clock(m0) 
-#endif 
-
-#ifdef MICRO_DECRYPT
-    start_clock
-#endif     
-    // deserialize
-    std::vector<std::string> members;
-    std::vector<std::string> encryptedKeys;
-    deserialize_members(s_members, members);
-    deserialize_hybrid_keys(s_meta, encryptedKeys);
-#ifdef MICRO_REMOVE
-    end_clock(m1) 
-#endif
-    
-#ifdef MICRO_DECRYPT
-    start_clock
-#endif         
-    // decrypt
-    hybrid_user_decrypt(groupKey, members, encryptedKeys, this->user_name);
-#ifdef MICRO_REMOVE
-    end_clock(m2)
-    printf("RSA_DECRYPT_KEY,%d,%f,%f,%f\n", members.size(), m0, m1, m2);
 #endif 
 }

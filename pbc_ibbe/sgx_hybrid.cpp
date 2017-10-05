@@ -1,4 +1,4 @@
-#include "hybrid_sgx.h"
+#include "sgx_hybrid.h"
 #include "sgx_crypto.h"
 #include <string.h>
 #include <fstream>
@@ -58,12 +58,8 @@ void hybrid_sgx_create_group(std::vector<std::string> members, std::vector<std::
         // encrypt the sym key with the public key
         // TODO: would 4098 be sufficient for whatever we're holding?
         unsigned char ciphertext[4098]={};
-        int cipher_length = (
-            useRsa ? 
-                rsa_encryption(group_key, 32, rsaPublicKey, strlen(rsaPublicKey), ciphertext)
-                :
-                ecc_encryption(group_key, 32, rsaPublicKey, strlen(rsaPublicKey), ciphertext)
-        );
+        int cipher_length = rsa_encryption(group_key, 32, rsaPublicKey, strlen(rsaPublicKey), ciphertext);
+                
         // push to the returned array
         std::string s(reinterpret_cast<char*>(ciphertext), cipher_length);
         encryptedKeys.push_back(s);
@@ -100,19 +96,4 @@ void hybrid_sgx_remove_user(std::vector<std::string>& members, std::vector<std::
     
     // re-key by creating a new group
     hybrid_sgx_create_group(members, encryptedKeys, useRsa);
-}
-
-// WARNING !!!!  the method bellow should not be executed in SGX!
-void hybrid_user_decrypt(GroupKey* groupKey, std::vector<std::string>& members, std::vector<std::string>& encryptedKeys, std::string user_id)
-{
-    // find the index of the user
-    int pos = std::find(members.begin(), members.end(), user_id) - members.begin();
-
-    // perform a key decryption
-    unsigned char* ciphertext = (unsigned char*) encryptedKeys[pos].c_str();
-    int ciphertext_length = encryptedKeys[pos].size();
-
-    unsigned char plaintext[4098]={};
-    int plaintext_length =
-        rsa_decryption(ciphertext, ciphertext_length, rsaPrivateKey, strlen(rsaPrivateKey), *groupKey);
 }

@@ -7,7 +7,7 @@
 #include "tests.h"
 
 // TODO : optimal value is 17. Keep 10 for testing.
-#define MICRO_POINTS 17
+#define MICRO_POINTS 10
 
 #define MICRO_CREATE
 #define MICRO_ADD
@@ -28,13 +28,14 @@ static inline void microbenchmarks()
     
     SpibbeApi* spibbeAdmin = new SpibbeApi(a, c);
     HybridApi* hybridAdmin = new HybridApi(a, c);
-    
+     
     SpibbeUserApi* spibbeUser = new SpibbeUserApi(u, c, spibbeAdmin);
     HybridUserApi* hybridUser = new HybridUserApi(u, c);
 
-    micro_create_group(spibbeAdmin);
-    micro_create_group(hybridAdmin);
+  //  micro_create_group(spibbeAdmin);
   
+  micro_create_group(spibbeAdmin);
+/*  
     micro_add_user(spibbeAdmin);
     micro_add_user(hybridAdmin);
     
@@ -43,7 +44,8 @@ static inline void microbenchmarks()
     
     micro_decrypt_key(spibbeAdmin, spibbeUser);
     micro_decrypt_key(hybridAdmin, hybridUser);
-}
+
+ */ }
 
 
 // MICROBENCH_H
