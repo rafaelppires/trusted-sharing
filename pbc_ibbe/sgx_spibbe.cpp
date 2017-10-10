@@ -6,7 +6,7 @@
 #include "sgx_crypto.h"
 #include "sgx_ibbe.h"
 #include "sgx_spibbe.h"
-#include <pthread.h>
+//#include <pthread.h>
 #include <unistd.h>
 
 #include <vector>

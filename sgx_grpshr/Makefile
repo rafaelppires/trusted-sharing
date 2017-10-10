@@ -11,13 +11,20 @@ GMPRootDir     := $(realpath ../gmp-6.1.2)
 SgxToken       := sgx
 NativeToken    := ntv
 
-CFlags         := -m64
-CPPFlags       := -std=c++11
-Enclave        := grpshr
-TARGET         := $(Enclave)
-Untrusted_Objs := $(TARGET).o
-EnclaveName    := enclave_$(Enclave)
-ExternalLibs   := pbc gmp 
+CFlags          := -m64
+CPPFlags        := -std=c++11
+Enclave         := grpshr
+TARGET          := $(Enclave)
+Untrusted_Objs  := $(TARGET).o
+EnclaveName     := enclave_$(Enclave)
+ExternalLibs    := pbc gmp 
+IBBEDir         := $(realpath ../pbc_ibbe)
+
+IBBECTrusted       := $(notdir $(wildcard $(IBBEDir)/sgx_*.c))
+IBBECXXTrusted     := $(notdir $(wildcard $(IBBEDir)/sgx_*.cpp))
+IBBECTrusted       := $(IBBECTrusted:%.c=%.o)
+IBBECXXTrusted     := $(IBBECXXTrusted:%.cpp=%.o)
+IBBETrustedObjs    := $(IBBECTrusted) $(IBBECXXTrusted)
 
 ifeq ($(SGX),1)
 BuildToken  := $(SgxToken)
@@ -37,7 +44,8 @@ ObjDir  := obj-$(BuildToken)
 
 ifeq ($(SGX),1)
 TRUSTEDOBJS          := $(EnclaveName)_t.o ecalls_$(Enclave).o \
-                        libc_proxy_t.o file_mock_t.o sdk_deprecated_t.o
+                        libc_proxy_t.o file_mock_t.o sdk_deprecated_t.o \
+                        $(IBBETrustedObjs)
 SGX_SDK              := /opt/intel/sgxsdk
 SGX_LIBRARY_PATH     := $(SGX_SDK)/lib64
 SGX_ENCLAVE_SIGNER   := $(SGX_SDK)/bin/x64/sgx_sign
@@ -100,6 +108,10 @@ App_Link_Flags := $(addprefix -L, $(App_Lib_Dirs)) \
 App_Cpp_Objs   += $(addprefix $(ObjDir)/, $(Untrusted_Objs))
 
 
+IBBECTrusted    := $(addprefix $(ObjDir)/, $(IBBECTrusted))
+IBBECXXTrusted  := $(addprefix $(ObjDir)/, $(IBBECXXTrusted))
+IBBETrustedObjs := $(addprefix $(ObjDir)/, $(IBBETrustedObjs))
+
 $(ObjDir)/$(TARGET).o : $(GMPDir)/gmp.h
 
 ############## UNTRUSTED #######################################################
@@ -129,7 +141,7 @@ $(BinDir)/$(TARGET).signed.so : %.signed.so : %.so
 	@echo -e "SIGN (Enclave)\t=>\t$@"
 
 $(BinDir)/$(TARGET).so : $(Trusted_Objects)
-	$(CXX) $^ -o $@ $(Trusted_Link_Flags)
+	@$(CXX) $^ -o $@ $(Trusted_Link_Flags)
 	@echo -e "LINK (Enclave)\t=>\t$@"
 
 $(SrcDir)/$(EnclaveName)_t.c : $(SrcDir)/$(EnclaveName).edl $(SGX_EDGER8R)
@@ -148,7 +160,15 @@ $(ObjDir)/%_t.o : $(SGX_COMMONDIR)/libc_mock/%.cpp
 	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_Cpp_Flags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 
-$(filter-out %_t.o, $(Trusted_Objects)) : $(ObjDir)/%.o : $(SrcDir)/%.cpp
+$(filter-out %_t.o $(IBBETrustedObjs), $(Trusted_Objects)) : $(ObjDir)/%.o : $(SrcDir)/%.cpp
+	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_Cpp_Flags}
+	@echo -e "CXX (Enclave)\t<=\t$<"
+
+$(IBBECTrusted) : $(ObjDir)/%.o : $(IBBEDir)/%.c
+	@${CC} -c $< -o $@ ${Enclave_C_Flags} ${Enclave_Include} 
+	@echo -e "CC (Enclave)\t<=\t$<"
+
+$(IBBECXXTrusted) : $(ObjDir)/%.o : $(IBBEDir)/%.cpp
 	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_Cpp_Flags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 ################################################################################

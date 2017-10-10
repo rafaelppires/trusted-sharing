@@ -1,9 +1,11 @@
 #include "sgx_hybrid.h"
 #include "sgx_crypto.h"
 #include <string.h>
+#ifndef ENABLE_SGX
 #include <fstream>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#endif
 #include <algorithm>
 
 /* THIS SAMPLE RSA KEY IS: 2048 bit */

@@ -1,21 +1,29 @@
 #include "sgx_crypto.h"
+#ifndef ENABLE_SGX
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
+#else
+#include <libc_mock/libc_proxy.h>
+#endif
 #include <stdlib.h>
 #include <unistd.h>
 
-unsigned char* gen_random_bytestream(int n)
+unsigned char* gen_random_bytestream(size_t n)
 {
     unsigned char* stream = (unsigned char*) malloc(n + 1);
+    sgx_random(n,stream);
+    stream[n] = 0;
+    return stream;
+}
+
+void sgx_random(size_t n, unsigned char *buff) {
     size_t i;
     for (i = 0; i < n; i++)
     {
-        stream[i] = (unsigned char) (rand() % 255 + 1);
+        buff[i] = (unsigned char) (rand() % 255 + 1);
     }
-    stream[n] = 0;
-    return stream;
 }
 
 void sgx_aes_encrypt(
@@ -24,6 +32,7 @@ void sgx_aes_encrypt(
     unsigned char* key, unsigned char* iv,
     unsigned char* ciphertext)
 {
+#ifndef ENABLE_SGX
     int len;
     int ciphertext_len;
     EVP_CIPHER_CTX *ctx;
@@ -34,6 +43,9 @@ void sgx_aes_encrypt(
     EVP_EncryptFinal_ex(ctx, ciphertext + len, &len);
     ciphertext_len += len;
     EVP_CIPHER_CTX_free(ctx);
+#else
+    printf("sgx_aes_encrypt\n"); 
+#endif
 }
 
 void sgx_aes_decrypt(
@@ -42,6 +54,7 @@ void sgx_aes_decrypt(
     unsigned char* key, unsigned char* iv,
     unsigned char* plaintext)
 {
+#ifndef ENABLE_SGX
     EVP_CIPHER_CTX *ctx;
     int len;
     int plaintext_len;
@@ -52,6 +65,9 @@ void sgx_aes_decrypt(
     EVP_DecryptFinal_ex(ctx, (plaintext) + len, &len);
     plaintext_len += len;
     EVP_CIPHER_CTX_free(ctx);
+#else
+    printf("sgx_aes_decrypt\n"); 
+#endif
 }
 
 int rsa_encryption(
@@ -59,6 +75,7 @@ int rsa_encryption(
     char* key, int key_length,
     unsigned char* ciphertext)
 {
+#ifndef ENABLE_SGX
     BIO *bio_buffer = NULL;
     RSA *rsa = NULL;
 
@@ -73,6 +90,9 @@ int rsa_encryption(
         RSA_PKCS1_PADDING);
                 
     return ciphertext_size;
+#else
+    printf("rsa_encryption\n"); 
+#endif
 }
 
 int rsa_decryption(
@@ -80,6 +100,7 @@ int rsa_decryption(
     char* key, int key_length,
     unsigned char* plaintext)
 {
+#ifndef ENABLE_SGX
     BIO *bio_buffer = NULL;
     RSA *rsa = NULL;
 
@@ -93,13 +114,22 @@ int rsa_decryption(
         rsa,
         RSA_PKCS1_PADDING);
     return plaintext_length;
+#else
+    printf("rsa_decryption\n"); 
+    return 0;
+#endif
 }
 
 unsigned char* sgx_sha256(const unsigned char *d, 
     size_t n, 
     unsigned char *md)
 {
+#ifndef ENABLE_SGX
     return SHA256(d, n, md);
+#else
+    printf("sgx_sha256\n"); 
+    return 0;
+#endif
 }
 
 int ecc_encryption(unsigned char* plaintext, int plaintext_length,

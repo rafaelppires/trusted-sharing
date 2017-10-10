@@ -11,7 +11,7 @@
 #include "sgx_ibbe.h"
 #include "pbc_test.h"
 #include "sgx_crypto.h"
-#include <pthread.h>
+//#include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
 

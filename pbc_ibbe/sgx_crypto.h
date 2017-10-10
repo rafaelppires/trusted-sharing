@@ -1,14 +1,18 @@
 #ifndef SGX_CRYPTO_H
 #define SGX_CRYPTO_H
 
-// TODO : this is required only for the print, can be removed afterwards when running in SGX
 #include <stdio.h>
 
 #if defined (__cplusplus)
 extern "C" {
 #endif
 
-unsigned char* gen_random_bytestream(int n);
+#ifdef ENABLE_SGX
+extern int printf(const char *fmt, ...);
+#endif
+
+unsigned char* gen_random_bytestream(size_t n);
+void sgx_random(size_t n, unsigned char *buff);
 
 static inline void print_hex(unsigned char *h, int l)
 {
