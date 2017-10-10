@@ -1,0 +1,9 @@
+enclave_curves.so
+{
+    global:
+        g_global_data_sim;
+        g_global_data;
+        enclave_curves_entry;
+    local:
+        *;
+};

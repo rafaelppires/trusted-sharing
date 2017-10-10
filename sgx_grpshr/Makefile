@@ -13,7 +13,7 @@ NativeToken    := ntv
 
 CFlags         := -m64
 CPPFlags       := -std=c++11
-Enclave        := curves
+Enclave        := grpshr
 TARGET         := $(Enclave)
 Untrusted_Objs := $(TARGET).o
 EnclaveName    := enclave_$(Enclave)
