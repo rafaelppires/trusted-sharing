@@ -30,6 +30,7 @@ Equivalence to RSA:
 sgx_enclave_id_t global_eid = 0;    /* global enclave id */
 #else
 #include <pbc.h>
+extern void ecall_handlerequest( int a, int b );
 #endif
 
 int main( int argc, char **argv ) {
@@ -49,8 +50,15 @@ int main( int argc, char **argv ) {
 
     sgx_status_t ret1, ret2;
     ret1 = ecall_handlerequest(global_eid, 224,1024);
-    ret2 = ecall_handlerequest(global_eid, 256,1536);
+//    ret2 = ecall_handlerequest(global_eid, 256,1536);
 #else
+    FILE *f = fopen("/dev/urandom","r");
+    unsigned int seed;
+    fread(&seed,1,sizeof(seed),f);
+    srand(seed);
+    fclose(f);
+    ecall_handlerequest(224,1024);
+#if 0
 	pbc_param_t par;
 	pbc_param_init_a_gen(par, 224, 1024);
 	FILE* pf = fopen ("a_224_1024.param", "w");
@@ -63,6 +71,7 @@ int main( int argc, char **argv ) {
 	pf1 = fopen ("a_256_1536.txt", "w") ;
 	pbc_param_out_str(pf1, par1);
 	fclose(pf1);
+#endif
 #endif
 }
 

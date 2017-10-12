@@ -22,12 +22,12 @@ static inline void print_hex(unsigned char *h, int l)
 }
 
 /* ------- AES OPERATIONS ---------- */
-void sgx_aes_encrypt(unsigned char* plaintext,
+void sgx_aes128_encrypt(const unsigned char* plaintext,
     int plaintext_size,
     unsigned char* key, unsigned char* iv,
     unsigned char* ciphertext);
 
-void sgx_aes_decrypt(unsigned char* ciphertext,
+void sgx_aes128_decrypt(const unsigned char* ciphertext,
     int ciphertext_len,
     unsigned char* key, unsigned char* iv,
     unsigned char* plaintext);

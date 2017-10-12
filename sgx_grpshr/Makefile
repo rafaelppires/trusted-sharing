@@ -11,20 +11,19 @@ GMPRootDir     := $(realpath ../gmp-6.1.2)
 SgxToken       := sgx
 NativeToken    := ntv
 
-CFlags          := -m64
-CPPFlags        := -std=c++11
+SharedCompFlags := -m64
+CFlags          := -std=c11
+CXXFlags        := -std=c++11
+App_CFlags      := $(SharedCompFlags) $(CFlags)
 Enclave         := grpshr
 TARGET          := $(Enclave)
 Untrusted_Objs  := $(TARGET).o
 EnclaveName     := enclave_$(Enclave)
 ExternalLibs    := pbc gmp 
-IBBEDir         := $(realpath ../pbc_ibbe)
 
-IBBECTrusted       := $(notdir $(wildcard $(IBBEDir)/sgx_*.c))
-IBBECXXTrusted     := $(notdir $(wildcard $(IBBEDir)/sgx_*.cpp))
-IBBECTrusted       := $(IBBECTrusted:%.c=%.o)
-IBBECXXTrusted     := $(IBBECXXTrusted:%.cpp=%.o)
-IBBETrustedObjs    := $(IBBECTrusted) $(IBBECXXTrusted)
+IBBEDir     := ../pbc_ibbe
+IBBEC       := $(notdir $(wildcard $(IBBEDir)/sgx_*.c))
+IBBECXX     := $(notdir $(wildcard $(IBBEDir)/sgx_*.cpp))
 
 ifeq ($(SGX),1)
 BuildToken  := $(SgxToken)
@@ -43,9 +42,13 @@ BinDir  := bin-$(BuildToken)
 ObjDir  := obj-$(BuildToken)
 
 ifeq ($(SGX),1)
-TRUSTEDOBJS          := $(EnclaveName)_t.o ecalls_$(Enclave).o \
+IBBEC                := $(IBBEC:%.c=%_t.o)
+IBBECXX              := $(IBBECXX:%.cpp=%_t.o)
+IBBEObjs             := $(IBBEC) $(IBBECXX)
+
+TRUSTEDOBJS          := $(EnclaveName)_t.o ecalls_$(Enclave)_t.o \
                         libc_proxy_t.o file_mock_t.o sdk_deprecated_t.o \
-                        $(IBBETrustedObjs)
+                        $(IBBEObjs)
 SGX_SDK              := /opt/intel/sgxsdk
 SGX_LIBRARY_PATH     := $(SGX_SDK)/lib64
 SGX_ENCLAVE_SIGNER   := $(SGX_SDK)/bin/x64/sgx_sign
@@ -54,12 +57,13 @@ Trts_Library_Name    := sgx_trts
 Service_Library_Name := sgx_tservice
 App_Lib_Dirs         := $(SGX_LIBRARY_PATH) 
 App_Libs             := sgx_uae_service sgx_urts 
-CFlags               += -DENABLE_SGX
+SharedCompFlags      += -DENABLE_SGX
 IncludeDirs          += $(SGX_SDK)/include
 Untrusted_Objs       += ocalls.o
 Untrusted_Objs       := $(filter-out $(TRUSTEDOBJS), $(Untrusted_Objs)) \
 	                    $(EnclaveName)_u.o
-SGXCOMOBJS := $(addprefix $(ObjDir)/, sgx_initenclave.o sgx_errlist.o)
+CommonNatvObjs       := sgx_initenclave sgx_errlist
+SgxCommonObjs        := $(addsuffix _u.o,$(addprefix $(ObjDir)/, $(CommonNatvObjs)))
 Enclave_Lib_Dirs     := $(SGX_LIBRARY_PATH) $(dir $(ExtLibs))
 Enclave_Libs         := 
 Enclave_SDK_Libs     := -Wl,--whole-archive \
@@ -79,62 +83,89 @@ Trusted_Link_Flags := -Wl,--no-undefined -nostdlib \
 	-Wl,--defsym,__ImageBase=0 \
 	-Wl,--version-script=$(SrcDir)/$(EnclaveName).lds \
     $(addprefix -l, $(ExternalLibs) sgx_tstdc)
-Common_C_Cpp_Flags := $(CFlags) -nostdinc -fvisibility=hidden \
+SharedEnclFlags    += $(SharedCompFlags) -nostdinc -fvisibility=hidden \
 	                  -fpie -fstack-protector -fno-builtin-printf
-Enclave_C_Flags   := -Wno-implicit-function-declaration -std=c11 \
-	                 $(Common_C_Cpp_Flags)
-Enclave_Cpp_Flags := $(Common_C_Cpp_Flags) $(CPPFlags) -nostdinc++
-Enclave_IncDirs   := $(SGX_SDK)/include/stlport $(SrcDir) $(SGX_SDK)/include \
+Enclave_C_Flags    := $(SharedEnclFlags) $(CFlags) \
+                      -Wno-implicit-function-declaration 
+Enclave_CXXFlags  := $(SharedEnclFlags) $(CXXFlags) -nostdinc++
+Enclave_IncDirs    := $(SGX_SDK)/include/stlport $(SrcDir) $(SGX_SDK)/include \
                      $(SGX_SDK)/include/tlibc $(SGX_COMMONDIR) \
                      $(PBCRootDir)/include $(GMPDir)
-Enclave_Include   := $(addprefix -I, $(Enclave_IncDirs))
-App_Cpp_Objs      := $(SGXCOMOBJS)
-Trusted_Objects   := $(addprefix $(ObjDir)/,$(TRUSTEDOBJS))
-LibsConfigFlags   += --enable-sgx
+Enclave_Include    := $(addprefix -I, $(Enclave_IncDirs) $(IBBEDir))
+App_Cpp_Objs       := $(SgxCommonObjs)
+Trusted_Objects    := $(addprefix $(ObjDir)/,$(TRUSTEDOBJS))
+LibsConfigFlags    += --enable-sgx
+ObjSuffix          := t
+CompString         := Encl
+CompCFlags         := ${Enclave_C_Flags}
+CompCXXFlags       := ${Enclave_CXXFlags}
 all: $(BinDir)/$(TARGET) $(BinDir)/$(TARGET).signed.so
 $(addprefix $(ObjDir)/,server_protocol.o $(TARGET).o): $(SrcDir)/$(EnclaveName)_u.c
 $(ObjDir)/query_manager.o : $(SrcDir)/$(EnclaveName)_t.c
 else
-App_Lib_Dirs := $(dir $(ExtLibs))
-App_Libs     := $(ExternalLibs)
-LDFLAGS      := -static
+App_Lib_Dirs   := $(dir $(ExtLibs))
+App_Libs       := $(ExternalLibs)
+SgxCommonObjs  := $(addprefix $(ObjDir)/, sgx_cryptoall_u.o)
+IBBEC          := $(IBBEC:%.c=%_u.o)
+IBBECXX        := $(IBBECXX:%.cpp=%_u.o)
+IBBEObjs    := $(IBBEC) $(IBBECXX)
+Untrusted_Objs += ecalls_$(Enclave).o $(IBBEObjs)
+IncludeDirs    += $(IBBEDir)
+LDFLAGS        := -lcrypto -lcrypto++
+ObjSuffix      := u
+CompString     := Natv
+CompCFlags     := ${App_CFlags}
+CompCXXFlags   := ${App_CXXFlags}
 all: $(BinDir)/$(TARGET)
 endif
 
+App_CXXFlags   := $(SharedCompFlags) $(CXXFlags)
 IncludeDirs    += $(SrcDir) $(SGX_COMMONDIR) $(PBCRootDir)/include/ $(GMPDir)/
 App_Include    := $(addprefix -I, $(IncludeDirs))
 App_Link_Flags := $(addprefix -L, $(App_Lib_Dirs)) \
                   $(addprefix -l, $(App_Libs))
-App_Cpp_Objs   += $(addprefix $(ObjDir)/, $(Untrusted_Objs))
+App_Cpp_Objs   += $(addprefix $(ObjDir)/, $(Untrusted_Objs)) $(SgxCommonObjs)
 
+ifeq ($(SGX),1)
+CompInclude := ${Enclave_Include}
+else
+CompInclude := ${App_Include}
+endif
 
-IBBECTrusted    := $(addprefix $(ObjDir)/, $(IBBECTrusted))
-IBBECXXTrusted  := $(addprefix $(ObjDir)/, $(IBBECXXTrusted))
-IBBETrustedObjs := $(addprefix $(ObjDir)/, $(IBBETrustedObjs))
+IBBEC    := $(addprefix $(ObjDir)/, $(IBBEC))
+IBBECXX  := $(addprefix $(ObjDir)/, $(IBBECXX))
+IBBEObjs := $(addprefix $(ObjDir)/, $(IBBEObjs))
 
 $(ObjDir)/$(TARGET).o : $(GMPDir)/gmp.h
 
+############## COMMON ##########################################################
+$(IBBEC) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.c
+	@${CC} -c $< -o $@ ${CompCFlags} ${CompInclude}
+	@echo -e "CC ($(CompString))\t<=\t$<"
+
+$(IBBECXX) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.cpp
+	@${CXX} -c $< -o $@ ${CompCXXFlags} ${CompInclude}
+	@echo -e "CXX ($(CompString))\t<=\t$<"
 ############## UNTRUSTED #######################################################
 $(BinDir)/$(TARGET): ${App_Cpp_Objs} ${ExtLibs} | $(BinDir)
 	@${CXX} $^ -o $@ ${App_Link_Flags} ${LDFLAGS}
 	@echo -e "LINK (App)\t=>\t$@"
 
 $(ObjDir)/%.o : $(SrcDir)/%.c | $(ObjDir)
-	@${CC} ${CFlags} ${App_Include} -c $< -o $@
+	@${CC} ${App_CFlags} ${App_Include} -c $< -o $@
 	@echo -e "CC (App)\t<=\t$<"
 
 $(ObjDir)/%.o : $(SrcDir)/%.cpp | $(ObjDir)
-	@${CXX} ${CPPFlags} ${CFlags} ${App_Include} -c $< -o $@
-	@echo -e "CXX (App)\t<=\t$<"
-
-$(SGXCOMOBJS) : $(ObjDir)/%.o : $(SGX_COMMONDIR)/%.cpp | $(ObjDir)
-	@${CXX} ${CPPFlags} ${CFlags} ${App_Include} -c $< -o $@
+	@${CXX} ${App_CXXFlags} ${App_Include} -c $< -o $@
 	@echo -e "CXX (App)\t<=\t$<"
 
 $(SrcDir)/$(EnclaveName)_u.c : $(SrcDir)/$(EnclaveName).edl $(SGX_EDGER8R)
 	@cd $(dir $@) && $(SGX_EDGER8R) --untrusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
 	@echo -e "EDGER (App)\t=>\t$@"
 
+$(SgxCommonObjs) : $(ObjDir)/%_u.o : $(SGX_COMMONDIR)/%.cpp | $(ObjDir)
+	@${CXX} -c $< -o $@ ${App_CXXFlags} ${App_Include}
+	@echo -e "CXX (App)\t<=\t$<"
 ############## TRUSTED #########################################################
 $(BinDir)/$(TARGET).signed.so : %.signed.so : %.so
 	@$(SGX_ENCLAVE_SIGNER) sign -enclave $< -config $(SrcDir)/$(EnclaveName).config.xml -out $@ -key $(SrcDir)/enclave-key.pem
@@ -157,19 +188,11 @@ $(ObjDir)/%_t.o : $(SGX_COMMONDIR)/libc_mock/%.c
 	@echo -e "CC (Enclave)\t<=\t$<"
 
 $(ObjDir)/%_t.o : $(SGX_COMMONDIR)/libc_mock/%.cpp
-	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_Cpp_Flags}
+	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_CXXFlags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 
-$(filter-out %_t.o $(IBBETrustedObjs), $(Trusted_Objects)) : $(ObjDir)/%.o : $(SrcDir)/%.cpp
-	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_Cpp_Flags}
-	@echo -e "CXX (Enclave)\t<=\t$<"
-
-$(IBBECTrusted) : $(ObjDir)/%.o : $(IBBEDir)/%.c
-	@${CC} -c $< -o $@ ${Enclave_C_Flags} ${Enclave_Include} 
-	@echo -e "CC (Enclave)\t<=\t$<"
-
-$(IBBECXXTrusted) : $(ObjDir)/%.o : $(IBBEDir)/%.cpp
-	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_Cpp_Flags}
+$(filter-out $(ObjDir)/$(EnclaveName)_t.o $(IBBEObjs), $(Trusted_Objects)) : $(ObjDir)/%_t.o : $(SrcDir)/%.cpp
+	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_CXXFlags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 ################################################################################
 $(PBCLib) : $(GMPLib)
