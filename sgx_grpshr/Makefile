@@ -45,10 +45,9 @@ ifeq ($(SGX),1)
 IBBEC                := $(IBBEC:%.c=%_t.o)
 IBBECXX              := $(IBBECXX:%.cpp=%_t.o)
 IBBEObjs             := $(IBBEC) $(IBBECXX)
-
+CommonEnclObjs       := libc_proxy_t.o file_mock_t.o sdk_deprecated_t.o sgx_cryptoall_t.o
 TRUSTEDOBJS          := $(EnclaveName)_t.o ecalls_$(Enclave)_t.o \
-                        libc_proxy_t.o file_mock_t.o sdk_deprecated_t.o \
-                        $(IBBEObjs)
+                        $(CommonEnclObjs) $(IBBEObjs)
 SGX_SDK              := /opt/intel/sgxsdk
 SGX_LIBRARY_PATH     := $(SGX_SDK)/lib64
 SGX_ENCLAVE_SIGNER   := $(SGX_SDK)/bin/x64/sgx_sign
@@ -135,6 +134,8 @@ endif
 IBBEC    := $(addprefix $(ObjDir)/, $(IBBEC))
 IBBECXX  := $(addprefix $(ObjDir)/, $(IBBECXX))
 IBBEObjs := $(addprefix $(ObjDir)/, $(IBBEObjs))
+CommonEnclObjs := $(addprefix $(ObjDir)/, $(CommonEnclObjs))
+GenericTrustedCpp := $(filter-out $(ObjDir)/$(EnclaveName)_t.o $(IBBEObjs) $(CommonEnclObjs), $(Trusted_Objects))
 
 $(ObjDir)/$(TARGET).o : $(GMPDir)/gmp.h
 
@@ -162,6 +163,7 @@ $(ObjDir)/%.o : $(SrcDir)/%.cpp | $(ObjDir)
 $(SrcDir)/$(EnclaveName)_u.c : $(SrcDir)/$(EnclaveName).edl $(SGX_EDGER8R)
 	@cd $(dir $@) && $(SGX_EDGER8R) --untrusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
 	@echo -e "EDGER (App)\t=>\t$@"
+	@echo $(GenericTrustedCpp) " <<<" 
 
 $(SgxCommonObjs) : $(ObjDir)/%_u.o : $(SGX_COMMONDIR)/%.cpp | $(ObjDir)
 	@${CXX} -c $< -o $@ ${App_CXXFlags} ${App_Include}
@@ -191,7 +193,11 @@ $(ObjDir)/%_t.o : $(SGX_COMMONDIR)/libc_mock/%.cpp
 	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_CXXFlags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 
-$(filter-out $(ObjDir)/$(EnclaveName)_t.o $(IBBEObjs), $(Trusted_Objects)) : $(ObjDir)/%_t.o : $(SrcDir)/%.cpp
+$(ObjDir)/%_t.o : $(SGX_COMMONDIR)/%.cpp
+	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_CXXFlags}
+	@echo -e "CXX (Enclave)\t<=\t$<"
+
+$(GenericTrustedCpp) : $(ObjDir)/%_t.o : $(SrcDir)/%.cpp
 	@${CXX} -c $< -o $@ ${Enclave_Include} ${Enclave_CXXFlags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 ################################################################################
@@ -215,7 +221,7 @@ $(BinDir):
 $(ObjDir):
 	@mkdir $(ObjDir)
 
-.PHONY: clean clean-libs clean-all
+.PHONY: clean clean-libs clean-all list
 
 clean:
 	rm -rf $(BinDir) $(ObjDir) $(SrcDir)/*_{t,u}.{c,h} 
@@ -224,4 +230,7 @@ clean-libs:
 	rm -rf $(PBCDir) $(GMPDir)
 
 clean-all: clean clean-libs
+
+list:
+	@$(MAKE) -pRrq -f $(lastword $(MAKEFILE_LIST)) : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$' | xargs
 
