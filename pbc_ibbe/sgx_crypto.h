@@ -11,15 +11,16 @@ extern "C" {
 extern int printf(const char *fmt, ...);
 #endif
 
-unsigned char* gen_random_bytestream(size_t n);
-void sgx_random(size_t n, unsigned char *buff);
-
 static inline void print_hex(unsigned char *h, int l)
 {
     for (int i=0; i<l; i++)
         printf("%02X", h[i]);
     printf("\n");
 }
+
+/* ------- RANDOM -------- */
+unsigned char* gen_random_bytestream(size_t n);
+void sgx_random(size_t n, unsigned char *buff);
 
 /* ------- AES OPERATIONS ---------- */
 void sgx_aes128_encrypt(const unsigned char* plaintext,
@@ -45,16 +46,6 @@ int rsa_encryption(unsigned char* plaintext, int plaintext_length,
 int rsa_decryption(unsigned char* ciphertext, int ciphertext_length,
     char* key, int key_length,
     unsigned char* plaintext);
-
-/* ------- ECC OPERATIONS ---------- */
-int ecc_encryption(unsigned char* plaintext, int plaintext_length,
-    char* key, int key_length,
-    unsigned char* ciphertext);
-    
-int ecc_decryption(unsigned char* ciphertext, int ciphertext_length,
-    char* key, int key_length,
-    unsigned char* plaintext);
-
 
 #if defined (__cplusplus)
 }

@@ -9,6 +9,7 @@
 #endif
 #include <stdlib.h>
 #include <unistd.h>
+#include <cstdlib>
 
 unsigned char* gen_random_bytestream(size_t n)
 {
