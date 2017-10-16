@@ -23,7 +23,6 @@ int printf(const char *fmt, ...) {
 }
 #endif // } sgx
 
-typedef unsigned char uchar;
 using Crypto::printable;
 //====================== ECALLS ================================================
 void ecall_handlerequest( int a, int b ) {
@@ -43,29 +42,34 @@ void ecall_handlerequest( int a, int b ) {
 */
     const char *plain = "very secret stuff\n";
     size_t sz         = strlen(plain)+1;
-    uchar *cipher     = (uchar*)malloc(sz),
-          *recovered  = (uchar*)malloc(sz);
-    uchar *key = gen_random_bytestream(16),
+    uint8_t *cipher     = (uint8_t*)malloc(sz),
+          *recovered  = (uint8_t*)malloc(sz),
+          *hash       = (uint8_t*)malloc(32);
+    uint8_t *key = gen_random_bytestream(16),
           *iv  = gen_random_bytestream(16);
 
     printf("Random key and iv\n");
     printf("key: %s\n",printable(std::string((char*)key,16)).c_str());
     printf("iv:  %s\n",printable(std::string((char*)iv,16)).c_str());
-    sgx_aes128_encrypt( (const uchar*)plain, sz, key, iv, cipher );
+    sgx_aes128_encrypt( (const uint8_t*)plain, sz, key, iv, cipher );
     printf("%s\n", printable( std::string((char*)cipher,sz) ).c_str() );
-    sgx_aes128_decrypt( (const uchar*)cipher, sz, key, iv, recovered );
+    sgx_aes128_decrypt( (const uint8_t*)cipher, sz, key, iv, recovered );
     printf("%s\n", printable( std::string((char*)recovered,sz).c_str() ).c_str());
+    //int cipher_length = rsa_encryption(group_key, 32, rsaPublicKey, strlen(rsaPublicKey), ciphertext);
 
     printf("Fixed key and iv\n");
     memset(key,0,16); key[0] = '1'; key[12] = 'j';
     memset(iv,0,16);  iv[0] = '9';  iv[15] = '*';
+    memset(hash,0,32); sgx_sha256(key,16,hash);
     printf("key: %s\n",printable(std::string((char*)key,16)).c_str());
+    printf("sha256: %s\n",printable(std::string((char*)hash,32)).c_str());
     printf("iv:  %s\n",printable(std::string((char*)iv,16)).c_str());
-    sgx_aes128_encrypt( (const uchar*)plain, sz, key, iv, cipher );
+    sgx_aes128_encrypt( (const uint8_t*)plain, sz, key, iv, cipher );
     printf("%s\n", Crypto::printable( std::string((char*)cipher,sz) ).c_str() );
-    sgx_aes128_decrypt( (const uchar*)cipher, sz, key, iv, recovered );
+    sgx_aes128_decrypt( (const uint8_t*)cipher, sz, key, iv, recovered );
     printf("%s\n", Crypto::printable( std::string((char*)recovered,sz).c_str() ).c_str());
 
+    free(hash);
     free(cipher);
     free(recovered);
     free(key);
