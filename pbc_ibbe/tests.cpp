@@ -8,6 +8,10 @@
 #include <time.h>
 #include <string>
 
+#include <iostream>
+#include <sstream>
+#include <fstream>  
+
 void generate_members(std::vector<std::string>& members, int start, int end)
 {
     for (int i = start; i < end; i++)
@@ -34,8 +38,20 @@ void sgx_level_bvt(int argc, char** argv)
     PublicKey pubKey;
     MasterSecretKey msk;
     ShortPublicKey shortPubKey;
+    
+    // load paring file
+    char s[16384];
+    FILE *fp = stdin;
+    if (argc > 1) {
+    fp = fopen(argv[1], "r");
+    if (!fp) pbc_die("error opening %s", argv[1]);
+    }
+    size_t count = fread(s, 1, 16384, fp);
+    if (!count) pbc_die("input error");
+    fclose(fp);    
+
     setup_sgx_safe(&pubKey, &shortPubKey, &msk,
-        p_size, argc, argv);
+        p_size, s, count);
 
     // generate mock members
     std::vector<std::string> members;
@@ -432,22 +448,71 @@ void micro_remove_user(AdminApi* admin)
      */
 }
 
+double replay_synthetic_trace(int o)
+{
+    Configuration::UsersPerPartition = 100;
+
+    //Cloud* c = new DropboxCloud();
+    std::string a = "master";
+    std::string g = "rep_" + std::to_string(o);
+ 
+    SpibbeApi* admin = new SpibbeApi(a, NULL);
+    //HybridApi* admin = new HybridApi(a, NULL);
+
+    // read members and create group
+    std::vector<std::string> members;
+    std::ifstream s("/home/stefan/code/middleware2017/data_sets/synthetic/1000/members_1000");
+    std::string user;
+    while(std::getline(s, user, '\n'))
+    {
+        members.push_back(user);
+    }
+    s.close();
+    admin->CreateGroup(g, members);
+    
+    init_clock
+    start_clock
+    // read operations and execute trace
+    std::ifstream ops("/home/stefan/code/middleware2017/data_sets/synthetic/1000/ops_" + std::to_string(o));
+    std::string line;
+    int op_index = 0;
+    while(std::getline(ops, line, '\n'))
+    {
+        //printf("OPERATION %d\n", op_index);
+        if (line.find("add,") == 0)
+        {
+            std::string user = line.substr(4);
+            //printf("add:%s\n", user.c_str());
+            admin->AddUserToGroup(g, user);
+        }
+        else
+        {
+            std::string user = line.substr(7);
+            //printf("remove:%s\n", user.c_str());
+            admin->RemoveUserFromGroup(g, user);
+        }
+        op_index++;
+    }
+    ops.close();
+    end_clock(m0)
+    printf("TOTAL TRACE TIME : %f\n", m0);
+    return m0;
+}
+
+
 void test_admin_replay()
 {
-    // TODO : eventualy this method goes to tests.cpp
-    Configuration::UsersPerPartition = 2000;
-    Cloud* c = new DropboxCloud();
-    std::string a = "master";
-    std::string g = "jura";
- 
- 
-   SpibbeApi* admin = new SpibbeApi(a, c);
-
-
-    std::vector<std::string> members;
-    generate_members(members, 0, 13245);
+    std::vector<double> results;
+    for(int o=0; o<=10; o++)
+    {
+        printf("REPLAYNG ----------> %d of 10\n", o);
+        double result = replay_synthetic_trace(o);
+        results.push_back(result);
+    }
     
-    admin->CreateGroup(g, members);
-    admin->AddUserToGroup(g, "stefan");
-    admin->RemoveUserFromGroup(g, "stefan");
+    printf("FINAL RESULTS :\n");
+    for(int i=0; i<results.size(); i++)
+    {
+        printf("%d,%f\n", i, results[i]);
+    }
 }

@@ -8,7 +8,7 @@
 // Admin Caches :
 //  (1) User Partition Index, given: (group, user id)
 //  (2) Free Space per Partition, given (group)
-// ?(3) Top X not-full partitions? ... would be nice to have.- speed up addition
+//  (3) Not-full partitions - speed up addition
 // ?(4) All metadata items - speed up removal
 // TODO : move admin cache to CPP
 
@@ -20,6 +20,9 @@ private:
     
     // key = group, value = [2000 2000 2000 .... ]
     static std::map<std::string, std::vector<int>> partitionOccupancy;
+    
+    // key - (group.user), value = SpibbePartition
+    static std::map<std::string, SpibbePartition> incompletePartitions;
     
 public:
 
@@ -95,10 +98,39 @@ public:
             return r;
         }
     }
+    
+    static void TryCacheIncompletePartition(std::string g, int p, SpibbePartition partition)
+    {
+        std::string k = g + "." + std::to_string(p);
+        incompletePartitions[k] = partition;
+    }
+    
+    static SpibbePartition GetCachedIncompletePartition(std::string g, int p)
+    {
+        std::string k = g + "." + std::to_string(p);
+        return incompletePartitions[k];        
+    }
+    
+    static void ClearAll()
+    {
+        userPartitions.clear();
+        partitionOccupancy.clear();
+        EnclaveGroupKey.clear();
+        incompletePartitions.clear();
+    }
+    
+    static void PrintPartitions(std::string g)
+    {
+        printf("PARTITIONS : %d\n", partitionOccupancy[g].size());
+        for(int i=0; i<partitionOccupancy[g].size(); i++)
+            printf("[%d] ", partitionOccupancy[g][i]);
+        printf("\n");
+    }
 };
 
 std::map<std::string, int> AdminCache::userPartitions;
 std::map<std::string, std::vector<int>> AdminCache::partitionOccupancy;
 std::map<std::string, GroupKey> AdminCache::EnclaveGroupKey;
+std::map<std::string, SpibbePartition> AdminCache::incompletePartitions;
     
 #endif // ADMIN_CACHE_H

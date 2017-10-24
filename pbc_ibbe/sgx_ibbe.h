@@ -54,8 +54,8 @@ typedef struct {
 
 
 /* SGX SAFE METHODS - FOR ADMIN USE */
-int setup_sgx_safe(PublicKey *puk, ShortPublicKey *spuk, MasterSecretKey *prk,
-    int max_group_size, int argc, char** argv);
+int setup_sgx_safe(PublicKey *puk, ShortPublicKey *spuk, MasterSecretKey *msk, int max_group_size, 
+            const char* pairing_string, size_t pairing_string_len);
 
 int extract_sgx_safe(ShortPublicKey spk, MasterSecretKey key, UserPrivateKey idkey, char* id);
 

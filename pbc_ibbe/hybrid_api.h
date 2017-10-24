@@ -10,6 +10,9 @@ class HybridApi : public AdminApi
 {
     private:
         bool useRsa;
+        std::vector<std::string> encryptedKeys;
+        std::vector<std::string> members;
+    
             
     public:
         HybridApi(std::string admin_name, Cloud* cloud, bool useRsa = true);

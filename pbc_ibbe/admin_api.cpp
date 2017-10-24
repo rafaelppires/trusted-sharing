@@ -16,13 +16,20 @@ SpibbeApi::SpibbeApi(std::string admin_name, Cloud* cloud)
     SystemSetup();
     //LoadSystem();
     this->cloud = cloud;
+    AdminCache::ClearAll();
 }
 
 void SpibbeApi::SystemSetup()
 {
-    char* s[2] = {"main\0", "a.param\0" };
+    // load paring file
+    char s[16384];
+    FILE *fp = fopen("a.param\0", "r");
+    size_t count = fread(s, 1, 16384, fp);
+    if (!count) pbc_die("input error");
+    fclose(fp);    
+    
     setup_sgx_safe(&(this->pk), &(this->spk), &(this->msk), Configuration::UsersPerPartition, 
-        2, s);
+        s, count);
 
     serialize_public_key_to_file(this->pk, "sys.pk");
     serialize_short_public_key_to_file(this->spk, "sys.spk");
@@ -55,25 +62,32 @@ void SpibbeApi::CreateGroup(std::string groupName, std::vector<std::string> grou
         Configuration::UsersPerPartition);      
     //printf("returned value "); print_hex(g_key, 32);
 
-    /* ------------ SERIALIZATION ------------ */
-    std::vector<std::string> names;
-    std::vector<std::string> content;
+    
+    if (this->cloud != NULL)
+    {
+        // serialization
+        std::vector<std::string> names;
+        std::vector<std::string> content;
+        for (int p=0; p<partitions.size(); p++)
+        {
+            names.push_back(groupName + "/p" + std::to_string(p) + "/members.txt");
+            content.push_back(serialize_partition_members(partitions[p]));
+            
+            names.push_back(groupName + "/p" + std::to_string(p) + "/meta.txt");
+            content.push_back(serialize_partition_meta(partitions[p]));
+        }
+        
+        // push to cloud
+        this->cloud->put_multiple(names, content);
+    }
+    
+    // push to local cache
     for (int p=0; p<partitions.size(); p++)
     {
-        names.push_back(groupName + "/p" + std::to_string(p) + "/members.txt");
-        content.push_back(serialize_partition_members(partitions[p]));
-        
-        names.push_back(groupName + "/p" + std::to_string(p) + "/meta.txt");
-        content.push_back(serialize_partition_meta(partitions[p]));
-    }
-
-    /* ------------ PUSH TO CLOUD ------------ */
-    this->cloud->put_multiple(names, content);
-
-    /* ------------ PUSH TO LOCAL CACHE ------------ */
-    for (int p=0; p<partitions.size(); p++)
+        AdminCache::TryCacheIncompletePartition(groupName, p, partitions[p]);
         for (int i=0; i<partitions[p].members.size(); i++)
             AdminCache::PutUserPartition(groupName, partitions[p].members[i], p);
+    }
     memcpy(AdminCache::EnclaveGroupKey[groupName], g_key, 32);
             
     printf("-----> GROUP CREATED \n");
@@ -81,7 +95,7 @@ void SpibbeApi::CreateGroup(std::string groupName, std::vector<std::string> grou
 
 void SpibbeApi::AddUserToGroup(std::string groupName, std::string userName)
 {
-    printf("-----> START ADD USER TO GROUP \n");
+    //printf("-----> START ADD USER TO GROUP \n");
  
     // find a non-empty partition for the user
     bool is_new_partition;
@@ -90,14 +104,9 @@ void SpibbeApi::AddUserToGroup(std::string groupName, std::string userName)
     SpibbePartition partition;
     if (!is_new_partition)
     {
-        // retreive partition from cloud
-        std::string members;
-        std::string meta;
-        this->cloud->get_partition(groupName, p, members, meta);
+        // retreive partition from incomplete partitions cache
+        partition = AdminCache::GetCachedIncompletePartition(groupName, p);
         
-        // deserialize
-        deserialize_partition(partition, members, meta, this->spk.pairing);    
-
         // SPIBBE - add user
         sp_ibbe_add_user(this->spk, this->msk, partition, userName);        
     }
@@ -111,75 +120,72 @@ void SpibbeApi::AddUserToGroup(std::string groupName, std::string userName)
         singleMember.push_back(userName);
         sp_ibbe_create_partition(partition, this->spk, this->msk, AdminCache::EnclaveGroupKey[groupName], singleMember);
     }
-      
-    // serialize 
-    std::string new_s_members = serialize_partition_members(partition);
-    std::string new_s_meta = serialize_partition_meta(partition);
-   
-    // push to cloud
-    this->cloud->put_partition(groupName, p, new_s_members, new_s_meta);
-
+         
+    if (this->cloud != NULL)
+    {
+        // serialize 
+        std::string new_s_members = serialize_partition_members(partition);
+        std::string new_s_meta = serialize_partition_meta(partition);
+        
+        // push to cloud
+        this->cloud->put_partition(groupName, p, new_s_members, new_s_meta);        
+    }
+    
     // push to admin cache
     AdminCache::PutUserPartition(groupName, userName, p);
+    AdminCache::TryCacheIncompletePartition(groupName, p, partition);
  
-    printf("-----> USER ADDED \n");
+    //printf("-----> USER ADDED \n");
 }
 
 void SpibbeApi::RemoveUserFromGroup(std::string groupName, std::string userName)
 {
-    printf("-----> START REMOVE USER FROM GROUP \n");
+    //printf("-----> START REMOVE USER FROM GROUP \n");
 
     // get user partition
     int p = AdminCache::GetUserPartition(groupName, userName);
     int total_partitions = AdminCache::GetPartitionsCount(groupName);
     
-    // retreive data from cloud; all metas; single user's members;
-    std::vector<std::string> request_items;
-    std::vector<std::string> responses;
-    request_items.push_back(groupName + "/p" + std::to_string(p) + "/members.txt");
-    for (int i=0; i<total_partitions; i++)
-        request_items.push_back(groupName + "/p" + std::to_string(i) + "/meta.txt");
-    this->cloud->get_multiple(request_items, responses);
-
-    // deserialize all
     std::vector<SpibbePartition> partitions;
     for(int i=0; i<total_partitions; i++)
     {
-        SpibbePartition partition;
-        if (i == p)
-        {
-            deserialize_partition(partition, responses[0], responses[i+1], this->spk.pairing);
-        }
-        else
-        {
-            deserialize_partition(partition, "", responses[i+1], this->spk.pairing);
-        }
-        partitions.push_back(partition);
+        partitions.push_back(AdminCache::GetCachedIncompletePartition(groupName, i));
     }
         
     // remove user from current partition, re-key for the rest
-    sp_ibbe_remove_user(this->spk, this->msk, partitions, userName, p);
+    sp_ibbe_remove_user(this->spk, this->msk, partitions, userName, p);    
     
-    // serialize all and push to cloud
-    std::vector<std::string> names;
-    std::vector<std::string> content;
+    if (this->cloud)
+    {
+        // serialize all and push to cloud
+        std::vector<std::string> names;
+        std::vector<std::string> content;
+        for (int i=0; i<partitions.size(); i++)
+        {
+            if (i == p)
+            {
+                names.push_back(groupName + "/p" + std::to_string(i) + "/members.txt");
+                content.push_back(serialize_partition_members(partitions[i]));
+            }
+            names.push_back(groupName + "/p" + std::to_string(i) + "/meta.txt");
+            content.push_back(serialize_partition_meta(partitions[i]));
+        }
+
+        // push to cloud
+        this->cloud->put_multiple(names, content);
+    }
+
+    // push partitions to cache
     for (int i=0; i<partitions.size(); i++)
     {
-        if (i == p)
-        {
-            names.push_back(groupName + "/p" + std::to_string(i) + "/members.txt");
-            content.push_back(serialize_partition_members(partitions[i]));
-        }
-        names.push_back(groupName + "/p" + std::to_string(i) + "/meta.txt");
-        content.push_back(serialize_partition_meta(partitions[i]));
+        AdminCache::TryCacheIncompletePartition(groupName, p, partitions[p]);
     }
-    
-    // push to cloud
-    this->cloud->put_multiple(names, content);
 
     // cache changes
     AdminCache::RemoveUserFromPartition(groupName, userName, p);
-    printf("-----> USER REMOVED \n");
+    //printf("-----> USER REMOVED \n");
+    
+    AdminCache::PrintPartitions(groupName);
 }
 
 void SpibbeApi::micro_get_upk(std::string user_id, UserPrivateKey upk)

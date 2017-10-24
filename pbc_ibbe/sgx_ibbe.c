@@ -16,7 +16,8 @@
 #include <unistd.h>
 
 
-int setup_sgx_safe(PublicKey *puk, ShortPublicKey *spuk, MasterSecretKey *msk, int max_group_size, int argc, char** argv)
+int setup_sgx_safe(PublicKey *puk, ShortPublicKey *spuk, MasterSecretKey *msk, int max_group_size, 
+            const char* pairing_string, size_t pairing_string_len)
 {
     int i;
     element_t g, h;
@@ -29,8 +30,11 @@ int setup_sgx_safe(PublicKey *puk, ShortPublicKey *spuk, MasterSecretKey *msk, i
     {
         srand(time(NULL));
         pbc_random_set_deterministic(rand());
-        pbc_demo_pairing_init(spuk->pairing, argc, argv);
-        pbc_demo_pairing_init(puk->pairing, argc, argv);
+
+        pairing_init_set_buf(spuk->pairing, pairing_string, pairing_string_len);
+        pairing_init_set_buf(puk->pairing, pairing_string, pairing_string_len);
+        // pbc_demo_pairing_init(spuk->pairing, argc, argv);
+        // pbc_demo_pairing_init(puk->pairing, argc, argv);
     }
 
     element_init_G1(g, spuk->pairing);

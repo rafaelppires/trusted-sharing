@@ -20,12 +20,13 @@ def generate_dataset(ds_i, p, users, n):
                 new_user = u_name = "user" + str(last_user) + "@test.com"
                 f.write("add," + new_user + "\n")
                 last_user += 1
+                users.append(new_user)
 
 def generate_all():
     print("Generating synthetic data-sets")
 
-    no_of_operations = 20
-    no_of_initial_users = 100
+    no_of_operations = 500
+    no_of_initial_users = 1000
     p_revoke = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
     # generate set of users
