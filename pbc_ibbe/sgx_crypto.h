@@ -40,13 +40,11 @@ uint8_t* sgx_sha256(const uint8_t *d,
     uint8_t *md);
 
 /* ------- RSA OPERATIONS ---------- */
-int rsa_encryption(uint8_t* plaintext, int plaintext_length,
-    char* key, int key_length,
-    uint8_t* ciphertext);
+int rsa_encryption(const uint8_t* plaintext, size_t plain_len,
+                   char* key, uint8_t* ciphertext, size_t cipher_len);
     
-int rsa_decryption(uint8_t* ciphertext, int ciphertext_length,
-    char* key, int key_length,
-    uint8_t* plaintext);
+int rsa_decryption(const uint8_t* ciphertext, size_t cipher_len,
+                   char* key, uint8_t* plaintext, size_t plain_len);
 
 #if defined (__cplusplus)
 }

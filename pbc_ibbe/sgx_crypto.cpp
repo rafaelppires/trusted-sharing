@@ -4,10 +4,10 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
-#else // } else {
+#else             // } else {
 #include <libc_mock/libc_proxy.h>
 #include <sgx_cryptoall.h>
-#endif // }
+#endif            // }
 #include <stdlib.h>
 #include <unistd.h>
 #include <cstdlib>
@@ -39,8 +39,8 @@ void sgx_aes128_encrypt(
     int ciphertext_len;
     EVP_CIPHER_CTX *ctx;
     ctx = EVP_CIPHER_CTX_new();
-    EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
-//    EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
+//    EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
+    EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
     EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_size);
     ciphertext_len = len;
     EVP_EncryptFinal_ex(ctx, ciphertext + len, &len);
@@ -62,8 +62,8 @@ void sgx_aes128_decrypt(
     int len;
     int plaintext_len;
     ctx = EVP_CIPHER_CTX_new();
-    EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
-//    EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
+//    EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
+    EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
     EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len);
     plaintext_len = len;
     EVP_DecryptFinal_ex(ctx, (plaintext) + len, &len);
@@ -74,49 +74,47 @@ void sgx_aes128_decrypt(
 #endif
 }
 
-int rsa_encryption(
-    uint8_t* plaintext, int plaintext_length,
-    char* key, int key_length,
-    uint8_t* ciphertext)
+int rsa_encryption( const uint8_t* plaintext, size_t plain_len,
+                    char* key, uint8_t* ciphertext, size_t cipher_len )
 {
 #ifndef ENABLE_SGX
     BIO *bio_buffer = NULL;
     RSA *rsa = NULL;
 
-    bio_buffer = BIO_new_mem_buf((void*)key, key_length);
+    bio_buffer = BIO_new_mem_buf((void*)key, -1);
     PEM_read_bio_RSA_PUBKEY(bio_buffer, &rsa, 0, NULL);
-    
-    int ciphertext_size = RSA_public_encrypt(
-        plaintext_length,
-        plaintext,
-        ciphertext,
-        rsa,
-        RSA_PKCS1_PADDING);
-                
+    size_t rsa_min = RSA_size( rsa );
+    if( cipher_len < rsa_min ) {
+        return -rsa_min;
+    }
+
+    int ciphertext_size = RSA_public_encrypt( plain_len, plaintext,
+                                              ciphertext,
+                                              rsa, RSA_PKCS1_PADDING );
     return ciphertext_size;
 #else
-    printf("rsa_encryption\n"); 
+    encrypt_rsa(plaintext,plain_len,key,ciphertext,cipher_len);
+    return 0;
 #endif
 }
 
-int rsa_decryption(
-    uint8_t* ciphertext, int ciphertext_length,
-    char* key, int key_length,
-    uint8_t* plaintext)
+int rsa_decryption(const uint8_t* ciphertext, size_t cipher_len,
+                   char* key, uint8_t* plaintext, size_t plain_len)
 {
 #ifndef ENABLE_SGX
     BIO *bio_buffer = NULL;
     RSA *rsa = NULL;
 
-    bio_buffer = BIO_new_mem_buf((void*)key, key_length);
+    bio_buffer = BIO_new_mem_buf((void*)key, -1);
     PEM_read_bio_RSAPrivateKey(bio_buffer, &rsa, 0, NULL);
+    size_t rsa_min = RSA_size( rsa );
+    if( plain_len < rsa_min ) {
+        return -rsa_min;
+    }
     
-    int plaintext_length = RSA_private_decrypt(
-        ciphertext_length,
-        ciphertext,
-        plaintext,
-        rsa,
-        RSA_PKCS1_PADDING);
+    int plaintext_length = RSA_private_decrypt( cipher_len, ciphertext,
+                                                plaintext,
+                                                rsa, RSA_PKCS1_PADDING);
     return plaintext_length;
 #else
     printf("rsa_decryption\n"); 

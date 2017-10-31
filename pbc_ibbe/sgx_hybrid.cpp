@@ -60,7 +60,7 @@ void hybrid_sgx_create_group(std::vector<std::string> members, std::vector<std::
         // encrypt the sym key with the public key
         // TODO: would 4098 be sufficient for whatever we're holding?
         unsigned char ciphertext[4098]={};
-        int cipher_length = rsa_encryption(group_key, 32, rsaPublicKey, strlen(rsaPublicKey), ciphertext);
+        int cipher_length = rsa_encryption(group_key, 32, rsaPublicKey, ciphertext,sizeof(ciphertext));
                 
         // push to the returned array
         std::string s(reinterpret_cast<char*>(ciphertext), cipher_length);
@@ -77,13 +77,13 @@ void hybrid_sgx_add_user(std::vector<std::string>& members, std::vector<std::str
 
     unsigned char plaintext[4098]={};
     int plaintext_length =
-        rsa_decryption(ciphertext, ciphertext_length, rsaPrivateKey, strlen(rsaPrivateKey), plaintext);
+        rsa_decryption(ciphertext, ciphertext_length, rsaPrivateKey, plaintext, sizeof(plaintext));
     
     // perform a key encryption
     unsigned char new_member_ciphertext[4098]={};
     int new_cipher_length = 
-        rsa_encryption(plaintext, plaintext_length, rsaPublicKey, strlen(rsaPublicKey), 
-        new_member_ciphertext);
+        rsa_encryption(plaintext, plaintext_length, rsaPublicKey, 
+        new_member_ciphertext, sizeof(new_member_ciphertext));
         
     // append data and leave
     std::string s(reinterpret_cast<char*>(new_member_ciphertext), new_cipher_length);

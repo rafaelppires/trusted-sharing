@@ -29,8 +29,11 @@ IBBECXX     := $(notdir $(wildcard $(IBBEDir)/sgx_*.cpp))
 BuildToken      := $(if $(is_sgx),$(SgxToken),$(NativeToken))
 GMPDir          := $(GMPRootDir)/build-$(BuildToken)
 PBCDir          := $(PBCRootDir)/build-$(BuildToken)
+SGXOSSLLDir     := $(realpath ../../../intel-sgx-ssl/lib64/release/)
+SGXOSSLIDir     := $(realpath ../../../intel-sgx-ssl/include/)
 GMPLib          := $(GMPDir)/.libs/libgmp.a
 PBCLib          := $(PBCDir)/.libs/libpbc.a
+SGXOpenSSLLib   := $(SGXOSSLLDir)/libsgx_tsgxssl_crypto.a
 ExtLibs         := $(PBCLib) $(GMPLib)
 LibsConfigFlags := --with-pic=yes --enable-shared=no
 
@@ -38,6 +41,7 @@ BinDir  := bin-$(BuildToken)
 ObjDir  := obj-$(BuildToken)
 
 ifeq ($(SGX),1)
+ExtLibs              += $(SGXOpenSSLLib)
 IBBEC                := $(IBBEC:%.c=%_t.o)
 IBBECXX              := $(IBBECXX:%.cpp=%_t.o)
 IBBEObjs             := $(IBBEC) $(IBBECXX)
@@ -53,19 +57,20 @@ Trts_Library_Name    := sgx_trts
 Service_Library_Name := sgx_tservice
 App_Lib_Dirs         := $(SGX_LIBRARY_PATH) 
 App_Libs             := sgx_uae_service sgx_urts 
-SharedCompFlags      += -DENABLE_SGX
+SharedCompFlags      += -DENABLE_SGX -DSGX_OPENSSL
 IncludeDirs          += $(SGX_SDK)/include
 NatvObjs             += ocalls.o
 NatvObjs             := $(filter-out $(EnclAllObjs), $(NatvObjs)) \
 	                    $(EnclaveName)_u.o
 NatvCommonObjs       := $(ObjDir)/sgx_initenclave_u.o $(ObjDir)/sgx_errlist_u.o
 Enclave_Lib_Dirs     := $(SGX_LIBRARY_PATH) $(dir $(ExtLibs))
-Enclave_Libs         := 
+Enclave_Libs         := sgx_tsgxssl_crypto sgx_tsgxssl
 Enclave_SDK_Libs     := -Wl,--whole-archive \
                         -l$(Trts_Library_Name) \
                         -Wl,--no-whole-archive \
                         -Wl,--start-group \
                              $(addprefix -l, sgx_tstdc sgx_tstdcxx sgx_tcrypto \
+                                             sgx_tsetjmp \
                                              $(Service_Library_Name) ) \
                         -Wl,--end-group
 Enclave_Link_Flags   := $(addprefix -L, $(Enclave_Lib_Dirs)) \
@@ -85,7 +90,7 @@ Encl_CFlags     := $(SharedEnclFlags) $(CFlags) \
 Encl_CXXFlags   := $(SharedEnclFlags) $(CXXFlags) -nostdinc++
 Enclave_IncDirs := $(SGX_SDK)/include/stlport $(SrcDir) $(SGX_SDK)/include \
                    $(SGX_SDK)/include/tlibc $(SGX_COMMONDIR) \
-                   $(PBCRootDir)/include $(GMPDir)
+                   $(PBCRootDir)/include $(GMPDir) $(SGXOSSLIDir)
 Encl_Include    := $(addprefix -I, $(Enclave_IncDirs) $(IBBEDir))
 EnclAllObjs     := $(addprefix $(ObjDir)/,$(EnclAllObjs))
 LibsConfigFlags += --enable-sgx
@@ -106,7 +111,8 @@ all: $(BinDir)/$(TARGET)
 endif
 
 Natv_CXXFlags  := $(SharedCompFlags) $(CXXFlags)
-IncludeDirs    += $(SrcDir) $(SGX_COMMONDIR) $(PBCRootDir)/include/ $(GMPDir)/
+IncludeDirs    += $(SrcDir) $(SGX_COMMONDIR) $(PBCRootDir)/include/ $(GMPDir)/ \
+                  ../pbc_ibbe
 Natv_Include   := $(addprefix -I, $(IncludeDirs))
 App_Link_Flags := $(addprefix -L, $(App_Lib_Dirs)) \
                   $(addprefix -l, $(App_Libs))
@@ -127,32 +133,32 @@ $(ObjDir)/$(TARGET).o : $(GMPDir)/gmp.h
 
 ############## COMMON ##########################################################
 $(IBBEC) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.c
-	@${CC} -c $< -o $@ ${CompCFlags} ${CompInclude}
+	${CC} -c $< -o $@ ${CompCFlags} ${CompInclude}
 	@echo -e "CC ($(CompString))\t<=\t$<"
 
 $(IBBECXX) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.cpp
-	@${CXX} -c $< -o $@ ${CompCXXFlags} ${CompInclude}
+	${CXX} -c $< -o $@ ${CompCXXFlags} ${CompInclude}
 	@echo -e "CXX ($(CompString))\t<=\t$<"
 ############## UNTRUSTED #######################################################
 $(BinDir)/$(TARGET): ${NatvAllObjs} ${ExtLibs} | $(BinDir)
-	@${CXX} $^ -o $@ ${App_Link_Flags} ${LDFLAGS}
+	${CXX} $^ -o $@ ${App_Link_Flags} ${LDFLAGS}
 	@echo -e "LINK (App)\t=>\t$@"
 
 $(ObjDir)/%.o : $(SrcDir)/%.c | $(ObjDir)
-	@${CC} ${Natv_CFlags} ${Natv_Include} -c $< -o $@
+	${CC} ${Natv_CFlags} ${Natv_Include} -c $< -o $@
 	@echo -e "CC (App)\t<=\t$<"
 
 $(ObjDir)/%.o : $(SrcDir)/%.cpp | $(ObjDir)
-	@${CXX} ${Natv_CXXFlags} ${Natv_Include} -c $< -o $@
+	${CXX} ${Natv_CXXFlags} ${Natv_Include} -c $< -o $@
 	@echo -e "CXX (App)\t<=\t$<"
 
 $(SrcDir)/$(EnclaveName)_u.c : $(SrcDir)/$(EnclaveName).edl $(SGX_EDGER8R)
-	@cd $(dir $@) && $(SGX_EDGER8R) --untrusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
+	cd $(dir $@) && $(SGX_EDGER8R) --untrusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
 	@echo -e "EDGER (App)\t=>\t$@"
 	@echo $(EnclGenericComp) " <<<" 
 
 $(NatvCommonObjs) : $(ObjDir)/%_u.o : $(SGX_COMMONDIR)/%.cpp | $(ObjDir)
-	@${CXX} -c $< -o $@ ${Natv_CXXFlags} ${Natv_Include}
+	${CXX} -c $< -o $@ ${Natv_CXXFlags} ${Natv_Include}
 	@echo -e "CXX (App)\t<=\t$<"
 ############## TRUSTED #########################################################
 $(BinDir)/$(TARGET).signed.so : %.signed.so : %.so
@@ -160,7 +166,7 @@ $(BinDir)/$(TARGET).signed.so : %.signed.so : %.so
 	@echo -e "SIGN (Enclave)\t=>\t$@"
 
 $(BinDir)/$(TARGET).so : $(EnclAllObjs)
-	@$(CXX) $^ -o $@ $(EnclaveLFlags)
+	$(CXX) $^ -o $@ $(EnclaveLFlags)
 	@echo -e "LINK (Enclave)\t=>\t$@"
 
 $(SrcDir)/$(EnclaveName)_t.c : $(SrcDir)/$(EnclaveName).edl $(SGX_EDGER8R)
