@@ -138,7 +138,7 @@ int main( int argc, char **argv ) {
 
     sgx_status_t ret1, ret2;
     ret1 = ecall_handlerequest(global_eid, 224,1024);
-    ret2 = ecall_handlerequest(global_eid, 256,1536);
+//    ret2 = ecall_handlerequest(global_eid, 256,1536);
 //    char* s[2] = {"main\0", "a.param\0"};
 //    sgx_level_bvt(2, s);
 #else

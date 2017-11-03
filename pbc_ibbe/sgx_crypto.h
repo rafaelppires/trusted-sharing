@@ -24,12 +24,12 @@ uint8_t* gen_random_bytestream(size_t n);
 void sgx_random(size_t n, uint8_t *buff);
 
 /* ------- AES OPERATIONS ---------- */
-void sgx_aes128_encrypt(const uint8_t* plaintext,
+void sgx_aes256_encrypt(const uint8_t* plaintext,
     int plaintext_size,
     uint8_t* key, uint8_t* iv,
     uint8_t* ciphertext);
 
-void sgx_aes128_decrypt(const uint8_t* ciphertext,
+void sgx_aes256_decrypt(const uint8_t* ciphertext,
     int ciphertext_len,
     uint8_t* key, uint8_t* iv,
     uint8_t* plaintext);

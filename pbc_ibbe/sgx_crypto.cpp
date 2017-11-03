@@ -6,8 +6,8 @@
 #include <openssl/evp.h>
 #else             // } else {
 #include <libc_mock/libc_proxy.h>
-#include <sgx_cryptoall.h>
 #endif            // }
+#include <sgx_cryptoall.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <cstdlib>
@@ -28,50 +28,22 @@ void sgx_random(size_t n, uint8_t *buff) {
     }
 }
 
-void sgx_aes128_encrypt(
+void sgx_aes256_encrypt(
     const uint8_t* plaintext,
     int plaintext_size,
     uint8_t* key, uint8_t* iv,
     uint8_t* ciphertext)
 {
-#ifndef ENABLE_SGX
-    int len;
-    int ciphertext_len;
-    EVP_CIPHER_CTX *ctx;
-    ctx = EVP_CIPHER_CTX_new();
-//    EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
-    EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
-    EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_size);
-    ciphertext_len = len;
-    EVP_EncryptFinal_ex(ctx, ciphertext + len, &len);
-    ciphertext_len += len;
-    EVP_CIPHER_CTX_free(ctx);
-#else
-    encrypt_aes128( plaintext, ciphertext, plaintext_size, key, iv );
-#endif
+    encrypt_aes( AES256, plaintext, ciphertext, plaintext_size, key, iv );
 }
 
-void sgx_aes128_decrypt(
+void sgx_aes256_decrypt(
     const uint8_t* ciphertext,
     int ciphertext_len,
     uint8_t* key, uint8_t* iv,
     uint8_t* plaintext)
 {
-#ifndef ENABLE_SGX
-    EVP_CIPHER_CTX *ctx;
-    int len;
-    int plaintext_len;
-    ctx = EVP_CIPHER_CTX_new();
-//    EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
-    EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
-    EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len);
-    plaintext_len = len;
-    EVP_DecryptFinal_ex(ctx, (plaintext) + len, &len);
-    plaintext_len += len;
-    EVP_CIPHER_CTX_free(ctx);
-#else
-    decrypt_aes128( ciphertext, plaintext, ciphertext_len, key, iv );
-#endif
+    decrypt_aes( AES256, ciphertext, plaintext, ciphertext_len, key, iv );
 }
 
 int rsa_encryption( const uint8_t* plaintext, size_t plain_len,
