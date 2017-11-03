@@ -9,12 +9,11 @@
  */
 
 #include "sgx_ibbe.h"
-#include "pbc_test.h"
+//#include "pbc_test.h"
 #include "sgx_crypto.h"
 //#include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
-
 
 int setup_sgx_safe(PublicKey *puk, ShortPublicKey *spuk, MasterSecretKey *msk, int max_group_size, 
             const char* pairing_string, size_t pairing_string_len)

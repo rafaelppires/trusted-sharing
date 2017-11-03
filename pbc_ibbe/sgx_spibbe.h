@@ -20,7 +20,21 @@ typedef struct {
     std::vector<std::string> members;
 } SpibbePartition;
 
-/* SHOULD RUN IN SGX */ 
+/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */ 
+/* -------- SGX BORDER METHODS -------- */ 
+/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */ 
+
+int ecall_create_group(const char* in_buffer, int in_bufer_size, char* p_out_buffer);
+
+int ecall_borded_add_user(const char* in_buffer, char* out_buffer);
+
+int ecall_border_remove_user(const char* in_buffer, char* out_buffer);
+
+/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */ 
+/* end SGX border methods */
+/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */ 
+
+
 unsigned char* sp_ibbe_create_group(
     std::vector<SpibbePartition>& partitions, 
     ShortPublicKey pubKey,
@@ -48,7 +62,6 @@ int sp_ibbe_remove_user(
     std::string user_id,
     int user_partition_index);
 
-// SHOULD NOT RUN IN SGX
 int sp_ibbe_user_decrypt(
     GroupKey* gKey,
     std::vector<EncryptedGroupKey>& gpKeys,
@@ -58,6 +71,9 @@ int sp_ibbe_user_decrypt(
     std::string user_id,
     std::vector<std::string> members,
     int usersPerPartition);
+
+/* OTHER */
+void load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk);
 
 
 // SP_IBBE_H

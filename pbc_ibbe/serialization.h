@@ -1,8 +1,8 @@
 #ifndef SERIALIZATION_H
 #define SERIALIZATION_H
 
-#include "ibbe.h"
-#include "spibbe.h"
+#include "sgx_ibbe.h"
+#include "sgx_spibbe.h"
 
 
 inline std::string get_group_members_key(std::string groupName)
@@ -30,35 +30,27 @@ void deserialize_short_public_key_from_file(std::string file_name, ShortPublicKe
 void serialize_msk_to_file(MasterSecretKey msk, std::string file_name);
 void deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pairing_t pairing);
 
-
-/* OLD STUF ------------------------------------------------------- */
-
-
-
-std::string serialize_members(std::vector<std::string>& members);
-void deserialize_members(std::string s_members, std::vector<std::string>& members);
-
-std::string serialize_group_metadata(std::vector<EncryptedGroupKey>& k, std::vector<Ciphertext>& c);
-void deserialize_group_metadata(std::string s_meta, std::vector<EncryptedGroupKey>& k, std::vector<Ciphertext>& c, pairing_t pairing);
-
 /* Hybrid Serialization */
 std::string serialize_hybrid_keys(std::vector<std::string>& encryptedKeys);
 void deserialize_hybrid_keys(std::string s, std::vector<std::string>& encryptedKeys);
+std::string serialize_members(std::vector<std::string>& members);
+void deserialize_members(std::string s_members, std::vector<std::string>& members);
 
-/* Serialization to segmented chunks */
-void serialize_members_chunks(std::vector<std::string>& members, std::vector<std::string>& ser_mem);
-void serialize_meta_partition(std::vector<EncryptedGroupKey> k, std::vector<Ciphertext> c, std::vector<std::string>& ser_key);
 
-/* SYSTEM PARAM SERIALIZATION */
+/* SYS Serialization TO STRING */
+// TOOD : they should be merged with the file versions of serialization 
+std::string serialize_spk_to_string(ShortPublicKey spk);
+void deserialize_spk_from_string(std::string s, ShortPublicKey& spk);
 
-std::string serialize_short_public_key(ShortPublicKey spk);
-void deserialize_short_public_key(std::string s_spk, ShortPublicKey& spk);
+std::string serialize_msk_to_string(MasterSecretKey msk);
+void deserialize_msk_from_string(std::string s, MasterSecretKey& msk);
 
-std::string serialize_user_key();
-void deserialize_user_key();
 
-std::string serialize_master_secret_key();
-void deserialize_master_secret_key();
+/* SGX BORDER SERIALIZATION METHODS */
+void serialize_create_group_input(ShortPublicKey spk, MasterSecretKey msk, std::vector<std::string> members, std::string& in_buffer);
+void deserialize_create_group_input(std::string in_buffer, ShortPublicKey& spk, MasterSecretKey& msk, std::vector<std::string>& members);
+void serialize_create_group_output(unsigned char* sealed_group_key, std::vector<SpibbePartition> partitions, std::string& out_buffer);
+//void deserialize_create_group_output(shortPubKey, msk, members, in_buffer);
 
 
 

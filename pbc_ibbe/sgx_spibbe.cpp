@@ -6,6 +6,7 @@
 #include "sgx_crypto.h"
 #include "sgx_ibbe.h"
 #include "sgx_spibbe.h"
+#include "serialization.h"
 //#include <pthread.h>
 #include <unistd.h>
 
@@ -13,7 +14,38 @@
 #include <string>
 #include <algorithm>
 
+//#include "pbc_test.h"
 const int Configuration::CipherElemSize;
+
+void load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk)
+{    
+    // load paring file
+    char s[16384];
+    FILE *fp = fopen("a.param", "r");
+    size_t count = fread(s, 1, 16384, fp);
+    fclose(fp);    
+    
+    pairing_init_set_buf(spk.pairing, s, count);
+    pairing_init_set_buf(pk.pairing, s, count);
+
+    deserialize_public_key_from_file("sys.pk", pk);
+    deserialize_short_public_key_from_file("sys.spk", spk);
+    deserialize_msk_from_file("sys.msk", msk, spk.pairing);
+}
+
+void fix_pairing(ShortPublicKey& spk)
+{
+    char s[16384] = "type a\n"
+"q 8780710799663312522437781984754049815806883199414208211028653399266475630880222957078625179422662221423155858769582317459277713367317481324925129998224791\n"
+"h 12016012264891146079388821366740534204802954401251311822919615131047207289359704531102844802183906537786776\n"
+"r 730750818665451621361119245571504901405976559617\n"
+"exp2 159\n"
+"exp1 107\n"
+"sign1 1\n"
+"sign0 1\n";
+    int count = 16384; 
+    pairing_init_set_buf(spk.pairing, s, count);
+}
 
 int get_user_index(std::vector<std::string>& members, std::string user_id)
 {
@@ -28,6 +60,49 @@ int get_user_index(std::vector<std::string>& members, std::string user_id)
     }
 }
 
+
+int ecall_create_group(const char* in_buffer, int in_buffer_size, char* out_buffer)
+{
+    // deserialize the input buffer
+    ShortPublicKey spk;
+    MasterSecretKey msk;
+    std::vector<std::string> members;
+    std::string in_str;
+    in_str.assign(in_buffer, in_buffer_size);
+    fix_pairing(spk);
+    deserialize_create_group_input(in_buffer, spk, msk, members);
+    
+    // call original SGX method
+    std::vector<SpibbePartition> partitions;
+    int usersPerPartition = Configuration::UsersPerPartition;
+    unsigned char* group_key = 
+        sp_ibbe_create_group(partitions, spk, msk, members, usersPerPartition);
+    
+    // TODO : seal group key by calling SGX api
+    // ...
+    
+    // serialize output
+    std::string out_s;
+    serialize_create_group_output(group_key, partitions, out_s);
+    // printf("serialize output size : %d\n", out_s.size());
+    
+    // deep copy to output buffer
+    const std::string::size_type size = out_s.size();
+    memcpy(out_buffer, out_s.c_str(), out_s.size());
+    return out_s.size();
+}
+
+void sgx_borded_add_user(const char* in_buffer, char* out_buffer)
+{
+    // ...
+}
+
+void sgx_border_remove_user(const char* in_buffer, char* out_buffer)
+{
+    // ...
+}
+
+
 unsigned char* sp_ibbe_create_group(
     std::vector<SpibbePartition>& partitions,
     ShortPublicKey pubKey,
@@ -37,7 +112,7 @@ unsigned char* sp_ibbe_create_group(
 {
     // generate a random group key
     unsigned char* group_key = gen_random_bytestream(32);
-    printf("GKEY : "); print_hex(group_key, 32);
+    // printf("GKEY : "); print_hex(group_key, 32);
 
     // split idSet into partitions
     for (int p = 0; p * usersPerPartition < members.size(); p++)
@@ -69,7 +144,6 @@ unsigned char* sp_ibbe_create_group(
         partitions.push_back(partition);
     }
     
-    // TODO : seal group_key in enclave before returning
     return group_key;
 }
 

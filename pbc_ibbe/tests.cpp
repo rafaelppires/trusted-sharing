@@ -4,6 +4,7 @@
 #include "admin_api.h"
 #include "hybrid_api.h"
 #include "microbench.h"
+#include "serialization.h"
 #include <stdio.h>
 #include <time.h>
 #include <string>
@@ -24,63 +25,38 @@ void generate_members(std::vector<std::string>& members, int start, int end)
 }
 
 /*
- * Test the SPIBBE methods at SGX level. No cloud involved. 
+ * Test calling SPIBBE Create Group from Untrusted to Trusted environments. 
  */
-void sgx_level_bvt(int argc, char** argv)
+void test_border_sgx_create_group(int argc, char** argv)
 {
-    printf("Testing SGX_LEVEL_BVT ...");
-    
-    //
-    int g_size = 1905;
-    int p_size = 200;
+    printf("Testing sgx border CREATE GROUP ...");
+    int g_size = 10000;
+    Configuration::UsersPerPartition = 2000;
     
     // system set-up
     PublicKey pubKey;
     MasterSecretKey msk;
     ShortPublicKey shortPubKey;
+    load_system(pubKey, shortPubKey, msk);
     
-    // load paring file
-    char s[16384];
-    FILE *fp = stdin;
-    if (argc > 1) {
-    fp = fopen(argv[1], "r");
-    if (!fp) pbc_die("error opening %s", argv[1]);
-    }
-    size_t count = fread(s, 1, 16384, fp);
-    if (!count) pbc_die("input error");
-    fclose(fp);    
-
-    setup_sgx_safe(&pubKey, &shortPubKey, &msk,
-        p_size, s, count);
-
-    // generate mock members
+    // generate mock users
     std::vector<std::string> members;
     generate_members(members, 0, g_size);
 
-    // create group
-    std::vector<SpibbePartition> partitions;
+    // serialize data for the sgx enclave
+    std::string in_buffer;
+    serialize_create_group_input(shortPubKey, msk, members, in_buffer);
     
-    // >>>>>>>> GO TO SGX ENCLAVE
-    // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    unsigned char* g_key = sp_ibbe_create_group(
-        partitions,
-        shortPubKey, msk,
-        members,
-        p_size);      
-    // >>>>>>>> RETURN FROM SGX ENCLAVE
-    // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        
-    if (partitions.size() != 10)
+    // create group by calling into SGX
+    char out_buffer[4096]; // FIX ME: hardcoded value, should be dynamic based on partitions count
+    int out_buffer_size = ecall_create_group(in_buffer.c_str(), in_buffer.size(), out_buffer);
+    
+    // quick verification on the returned content from SGX
+    if (out_buffer_size != 2192)
     {
         printf("TEST FAILED !!!\n");
         return;
     }
-    if (partitions[9].members.size() != 105)
-    {
-        printf("TEST FAILED %d !!!\n", partitions[9].members.size());
-        return;
-    }
-    
     printf("\033[32;1m TEST PASSED \033[0m\n");
 }
 

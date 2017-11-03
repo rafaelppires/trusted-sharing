@@ -3,10 +3,11 @@
 
 #include "admin_api.h"
 
+
 /* 
  * BASIC VALIDATION TESTS
  */ 
-void sgx_level_bvt(int argc, char** argv);
+void test_border_sgx_create_group(int argc, char** argv);
 
 
 /*

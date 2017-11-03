@@ -6,9 +6,6 @@
 
 #include <fstream>
 
-// TO BE REMOVER, it is only used for print_hex
-#include "sgx_crypto.h"
-
 std::string serialize_members(std::vector<std::string>& members)
 {
     std::stringstream s;
@@ -25,90 +22,6 @@ void deserialize_members(std::string s_members, std::vector<std::string>& member
     while(std::getline(s, user, '\n'))
     {
         members.push_back(user);
-    }
-}
-
-std::string serialize_group_metadata(std::vector<EncryptedGroupKey>& k, std::vector<Ciphertext>& c)
-{
-    std::stringstream s;
-    
-    // header info : [count, c1_size, c2_size, c3_size]
-    int count = k.size();
-    s.write(reinterpret_cast< const char* >(&count), sizeof(count));
-    int c1_size = element_length_in_bytes(c[0].c1);
-    int c2_size = element_length_in_bytes(c[0].c2);
-    int c3_size = element_length_in_bytes(c[0].h_pow_product_gamma_hash);
-    s.write(reinterpret_cast< const char* >( &c1_size ), sizeof(c1_size));
-    s.write(reinterpret_cast< const char* >( &c2_size ), sizeof(c2_size));
-    s.write(reinterpret_cast< const char* >( &c3_size ), sizeof(c3_size));
-    
-    // list of (encrytped key, ciphers)
-    for(int i = 0; i < k.size(); i++)
-    {
-        // key & iv
-        s.write(reinterpret_cast< const char* >(&(k[i].encryptedKey)), sizeof(k[i].encryptedKey));
-        s.write(reinterpret_cast< const char* >(&(k[i].iv)), sizeof(k[i].iv));
-        
-        // cipher
-        // c1
-        unsigned char* c1_bytes = (unsigned char*) malloc(c1_size);
-        element_to_bytes(c1_bytes, c[i].c1);
-        s.write(reinterpret_cast< const char* >(c1_bytes), c1_size);
-    
-        // c2
-        unsigned char* c2_bytes = (unsigned char*) malloc(c2_size);
-        element_to_bytes(c2_bytes, c[i].c2);
-        s.write(reinterpret_cast< const char* >(c2_bytes), c2_size);
-        // h_pow_product_gamma_hash
-        unsigned char* c3_bytes = (unsigned char*) malloc(c3_size);
-        element_to_bytes(c3_bytes, c[i].h_pow_product_gamma_hash);
-        s.write(reinterpret_cast< const char* >(c3_bytes), c3_size);
-    }
-    
-    return s.str();
-}
-
-void deserialize_group_metadata(std::string s_meta, std::vector<EncryptedGroupKey>& k, std::vector<Ciphertext>& c, pairing_t pairing)
-{
-    k.clear();
-    c.clear();
-    
-    std::stringstream s(s_meta);
-    
-    // read header [count, c1_size, c2_size, c3_size]
-    int count, c1_size, c2_size, c3_size;
-    s.read(reinterpret_cast<char*>(&count), sizeof(count));
-    s.read(reinterpret_cast<char*>(&c1_size), sizeof(c1_size));
-    s.read(reinterpret_cast<char*>(&c2_size), sizeof(c2_size));
-    s.read(reinterpret_cast<char*>(&c3_size), sizeof(c3_size));
-    // read body
-    for(int i=0; i<count; i++)
-    {
-        // key and iv
-        EncryptedGroupKey egk;
-        k.push_back(egk);
-        s.read(reinterpret_cast<char*>(&(k[i].encryptedKey)), sizeof(k[i].encryptedKey));
-        s.read(reinterpret_cast<char*>(&(k[i].iv)), sizeof(k[i].iv));
-        
-        // ciphers
-        Ciphertext cipher;
-        c.push_back(cipher);
-        // c1
-        unsigned char c1_bytes[c1_size] = {};
-        s.read(reinterpret_cast<char*>(c1_bytes), c1_size);
-        element_init_G1(c[i].c1, pairing);
-        element_from_bytes(c[i].c1, c1_bytes);
-        
-        // c2
-        unsigned char c2_bytes[c2_size];
-        s.read(reinterpret_cast<char*>(c2_bytes), c2_size);
-        element_init_G1(c[i].c2, pairing);
-        element_from_bytes(c[i].c2, c2_bytes);
-        // c3
-        unsigned char c3_bytes[c3_size];
-        s.read(reinterpret_cast<char*>(c3_bytes), c3_size);
-        element_init_G1(c[i].h_pow_product_gamma_hash, pairing);
-        element_from_bytes(c[i].h_pow_product_gamma_hash, c3_bytes);
     }
 }
 
@@ -149,62 +62,6 @@ void deserialize_hybrid_keys(std::string s_ek, std::vector<std::string>& encrypt
         std::string str_ek(ek, size);
         encryptedKeys.push_back(str_ek);
     }
-}
-
-
-void serialize_members_chunks(std::vector<std::string>& members, std::vector<std::string>& ser_mem)
-{
-    ser_mem.clear();
-    
-    int partitions_count = members.size() / Configuration::UsersPerPartition;
-    for (int p=0; p<partitions_count; p++)
-    {
-        std::stringstream s;
-        int partition_start = p * Configuration::UsersPerPartition;
-        int partition_end = (p + 1) * Configuration::UsersPerPartition;
-        if (partition_end > members.size())
-        {
-            partition_end = members.size();
-        }        
-
-        for(int i = partition_start; i < partition_end; i++)
-            s << members[i] << "\n";
-            
-        ser_mem.push_back(s.str());
-    }    
-}
-
-void serialize_meta_partition(std::vector<EncryptedGroupKey> k, std::vector<Ciphertext> c, std::vector<std::string>& ser_key)
-{
-    ser_key.clear();
-
-    int c1_size = element_length_in_bytes(c[0].c1);
-    int c2_size = element_length_in_bytes(c[0].c2);
-    int c3_size = element_length_in_bytes(c[0].h_pow_product_gamma_hash);
-    
-    for (int p=0; p<k.size(); p++)
-    {
-        // keys
-        std::stringstream s;
-        s.write(reinterpret_cast< const char* >(&(k[p].encryptedKey)), sizeof(k[p].encryptedKey));
-        s.write(reinterpret_cast< const char* >(&(k[p].iv)), sizeof(k[p].iv));            
-
-        // cipher
-        // c1
-        unsigned char* c1_bytes = (unsigned char*) malloc(c1_size);
-        element_to_bytes(c1_bytes, c[p].c1);
-        s.write(reinterpret_cast< const char* >(c1_bytes), c1_size);
-        // c2
-        unsigned char* c2_bytes = (unsigned char*) malloc(c2_size);
-        element_to_bytes(c2_bytes, c[p].c2);
-        s.write(reinterpret_cast< const char* >(c2_bytes), c2_size);
-        // h_pow_product_gamma_hash
-        unsigned char* c3_bytes = (unsigned char*) malloc(c3_size);
-        element_to_bytes(c3_bytes, c[p].h_pow_product_gamma_hash);
-        s.write(reinterpret_cast< const char* >(c3_bytes), c3_size);
-    
-        ser_key.push_back(s.str());
-    }    
 }
 
 std::string serialize_partition_members(SpibbePartition partition)
@@ -431,4 +288,150 @@ void deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pair
     element_from_bytes(msk.gamma, gamma_bytes);
 
     s.close();
+}
+
+
+std::string serialize_spk_to_string(ShortPublicKey spk)
+{
+    std::stringstream s;
+    
+    int w_size = element_length_in_bytes(spk.w);
+    int v_size = element_length_in_bytes(spk.v);
+    int h_size = element_length_in_bytes(spk.h);
+    
+    unsigned char* w_bytes = (unsigned char*) malloc(w_size);
+    element_to_bytes(w_bytes, spk.w);
+    s.write(reinterpret_cast< const char* >(w_bytes), w_size);
+
+    unsigned char* v_bytes = (unsigned char*) malloc(v_size);
+    element_to_bytes(v_bytes, spk.v);
+    s.write(reinterpret_cast< const char* >(v_bytes), v_size);
+
+    unsigned char* h_bytes = (unsigned char*) malloc(h_size);
+    element_to_bytes(h_bytes, spk.h);
+    s.write(reinterpret_cast< const char* >(h_bytes), h_size);        
+
+    return s.str();
+}
+
+void deserialize_spk_from_string(std::string in_s, ShortPublicKey& spk)
+{
+    std::stringstream s(in_s.c_str());
+    int elem_size = 128;
+    unsigned char w_bytes[elem_size];
+    s.read(reinterpret_cast<char*>(w_bytes), elem_size);
+    element_init_G1(spk.w, spk.pairing);
+    element_from_bytes(spk.w, w_bytes);
+    
+    unsigned char v_bytes[elem_size];
+    s.read(reinterpret_cast<char*>(v_bytes), elem_size);
+    element_init_GT(spk.v, spk.pairing);
+    element_from_bytes(spk.v, w_bytes);
+    
+    unsigned char h_bytes[elem_size];
+    s.read(reinterpret_cast<char*>(h_bytes), elem_size);
+    element_init_G2(spk.h, spk.pairing);
+    element_from_bytes(spk.h, h_bytes);
+}
+
+std::string serialize_msk_to_string(MasterSecretKey msk)
+{
+    std::stringstream s;
+    
+    int g_size = element_length_in_bytes(msk.g);
+    int gamma_size = element_length_in_bytes(msk.gamma);
+
+    unsigned char* g_bytes = (unsigned char*) malloc(g_size);
+    element_to_bytes(g_bytes, msk.g);
+    s.write(reinterpret_cast< const char* >(g_bytes), g_size);
+
+    unsigned char* gamma_bytes = (unsigned char*) malloc(gamma_size);
+    element_to_bytes(gamma_bytes, msk.gamma);
+    s.write(reinterpret_cast< const char* >(gamma_bytes), gamma_size);
+
+    return s.str();
+}
+
+void deserialize_msk_from_string(std::string in_s, MasterSecretKey& msk, pairing_t pairing)
+{
+    std::stringstream s(in_s);
+
+    int g_elem_size = 128;
+    unsigned char g_bytes[g_elem_size];
+    s.read(reinterpret_cast<char*>(g_bytes), g_elem_size);
+    element_init_G1(msk.g, pairing);
+    element_from_bytes(msk.g, g_bytes);
+ 
+    // TODO : this should go to global config
+    int z_elem_size = 20;
+    unsigned char gamma_bytes[z_elem_size];
+    s.read(reinterpret_cast<char*>(gamma_bytes), z_elem_size);
+    element_init_Zr(msk.gamma, pairing);
+    element_from_bytes(msk.gamma, gamma_bytes);
+}
+
+void deserialize_border_create_group(std::string s)
+{
+/* 
+       // ---- deserialize from in_buffer
+    // 1. short pub key, sealed msk
+    ShortPublicKey spk;
+    std::string s;
+    deserialize_short_public_key_from_string(s, spk);
+    
+    MasterSecretKey msk;
+    deserialize_msk_from_string(s, msk);
+    
+    // 2. members : vector<string>
+    std::vector<std::string> members;
+    // 3. users per partition : int
+    int usersPerPartition;
+*/
+}
+
+
+void serialize_create_group_input(ShortPublicKey spk, MasterSecretKey msk, std::vector<std::string> members, std::string& in_buffer)
+{
+    in_buffer = "";
+    std::string s;
+    
+    in_buffer += serialize_spk_to_string(spk);
+    // 284 BYTES
+    // printf("\nSHORT PUB KEY LEN : %d\n", in_buffer.size());
+    
+    in_buffer += serialize_msk_to_string(msk);
+    // 148 BYTES
+    // printf("with MASTER SEC KEY : %d\n", in_buffer.size());
+    
+    in_buffer += serialize_members(members);
+    // printf("with MEMBERS : %d\n", in_buffer.size());
+}
+
+void deserialize_create_group_input(std::string in_buffer, ShortPublicKey& spk, MasterSecretKey& msk, std::vector<std::string>& members)
+{
+    int SPK_LEN = 284;
+    int MSK_LEN = 148;
+    std::string s_spk = in_buffer.substr(0, SPK_LEN);
+    std::string s_msk = in_buffer.substr(SPK_LEN, MSK_LEN);
+    std::string s_members = in_buffer.substr(SPK_LEN + MSK_LEN, in_buffer.size() - (SPK_LEN + MSK_LEN));
+    deserialize_spk_from_string(s_spk, spk);
+    deserialize_msk_from_string(s_msk, msk, spk.pairing);
+    deserialize_members(s_members, members);
+}
+
+void serialize_create_group_output(unsigned char* sealed_group_key, std::vector<SpibbePartition> partitions, std::string& out_buffer)
+{
+    out_buffer = "";
+    std::string sgk((char*) sealed_group_key);
+    out_buffer += sgk;
+    for(int p=0; p < partitions.size(); p++)
+    {
+        // 432 BYTES / partition meta
+        std::string s = serialize_partition_meta(partitions[p]);
+        out_buffer += s;
+        //printf("Meta size : %d\n", s.size());
+    }
+    
+    // 2192 BYTES
+    // printf("Out size : %d\n", out_buffer.size());
 }

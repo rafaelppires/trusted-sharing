@@ -3,6 +3,7 @@
 #define IBBE_H
 
 #include "pbc.h"
+//#include "pbc_test.h"
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
@@ -79,6 +80,7 @@ int decrypt_sgx_safe(BroadcastKey* bKey, Ciphertext cipher,
 int decrypt_with_key_sgx_safe(BroadcastKey* bKey, Ciphertext cipher,
     ShortPublicKey pubKey, MasterSecretKey msk, UserPrivateKey ikey,
     char* id, char idSet[][MAX_STRING_LENGTH], int idCount);
+
 
 #if defined (__cplusplus)
 }
