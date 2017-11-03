@@ -64,7 +64,7 @@ unsigned char* sp_ibbe_create_group(
 
         // encrypt the group key by the broadcast key
         sgx_random(16, partition.encGroupKey.iv);
-        sgx_aes128_encrypt(group_key, 32, bKey, partition.encGroupKey.iv, partition.encGroupKey.encryptedKey);
+        sgx_aes256_encrypt(group_key, 32, bKey, partition.encGroupKey.iv, partition.encGroupKey.encryptedKey);
 
         partitions.push_back(partition);
     }
@@ -91,7 +91,7 @@ int sp_ibbe_create_partition(
     // encrypt the group key by the new broadcast key
     EncryptedGroupKey egk;
     sgx_random(16, egk.iv);
-    sgx_aes128_encrypt(group_key, 32, singleUserBKey, partition.encGroupKey.iv, partition.encGroupKey.encryptedKey);
+    sgx_aes256_encrypt(group_key, 32, singleUserBKey, partition.encGroupKey.iv, partition.encGroupKey.encryptedKey);
 
     partition.members.push_back(members[0]);
 }
@@ -127,7 +127,7 @@ int sp_ibbe_remove_user(
 
             // encrypt the new group key by broadcast key
             sgx_random(16, partitions[i].encGroupKey.iv);
-            sgx_aes128_encrypt(group_key, 32, bKey, partitions[i].encGroupKey.iv, partitions[i].encGroupKey.encryptedKey);
+            sgx_aes256_encrypt(group_key, 32, bKey, partitions[i].encGroupKey.iv, partitions[i].encGroupKey.encryptedKey);
         }
 
     // for user partition, do an optimized remove in O(1)
@@ -136,7 +136,7 @@ int sp_ibbe_remove_user(
         (char*)user_id.c_str(),
         pubKey, msk);
     sgx_random(16, partitions[user_partition_index].encGroupKey.iv);
-    sgx_aes128_encrypt(group_key, 32, user_partition_key,
+    sgx_aes256_encrypt(group_key, 32, user_partition_key,
         partitions[user_partition_index].encGroupKey.iv, partitions[user_partition_index].encGroupKey.encryptedKey);
     if (partitions[user_partition_index].members.size() == 1)
     {

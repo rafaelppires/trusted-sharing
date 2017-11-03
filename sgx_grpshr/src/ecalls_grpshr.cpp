@@ -89,14 +89,17 @@ void ecall_handlerequest( int a, int b ) {
     uint8_t *key = gen_random_bytestream(aesbits/8),
             *iv  = gen_random_bytestream(aesbits/8);
 
-    printf("Random key and iv\n");
+    printf("-----------------\n"
+           "Random key and iv\n");
     printf("key: %s\n",printable(std::string((char*)key,aesbits/8)).c_str());
     printf("iv:  %s\n",printable(std::string((char*)iv,aesbits/8)).c_str());
-    sgx_aes128_encrypt( (const uint8_t*)plain, sz, key, iv, cipher );
+    sgx_aes256_encrypt( (const uint8_t*)plain, sz, key, iv, cipher );
     printf("%s\n", printable( std::string((char*)cipher,sz) ).c_str() );
-    sgx_aes128_decrypt( (const uint8_t*)cipher, sz, key, iv, recovered );
+    sgx_aes256_decrypt( (const uint8_t*)cipher, sz, key, iv, recovered );
     printf("%s\n", printable( std::string((char*)recovered,sz).c_str() ).c_str());
 
+    printf("-----------------\n"
+           "RSA\n");
     const char *group_key = "0123456789ABCDEF0123456789ABCDEF";
     char ciphertext[4098];
     int cipher_length = rsa_encryption((const uint8_t*)group_key, strlen(group_key), rsaPubKey, (uint8_t*)ciphertext, sizeof(ciphertext));
@@ -107,16 +110,17 @@ void ecall_handlerequest( int a, int b ) {
     if( plength < 0 ) printf("ERROR: destination buffer too small\n");
     printf("[%d] => %s\n", plength, Crypto::printable(std::string(plaintext,plength)).c_str());
 
-    printf("Fixed key and iv\n");
+    printf( "----------------\n"
+            "Fixed key and iv\n");
     memset(key,0,aesbits/8); key[0] = '1'; key[12] = 'j';
     memset(iv,0,aesbits/8);  iv[0] = '9';  iv[15] = '*';
     memset(hash,0,32); sgx_sha256(key,16,hash);
     printf("key: %s\n",printable(std::string((char*)key,aesbits/8)).c_str());
     printf("sha256: %s\n",printable(std::string((char*)hash,32)).c_str());
     printf("iv:  %s\n",printable(std::string((char*)iv,aesbits/8)).c_str());
-    sgx_aes128_encrypt( (const uint8_t*)plain, sz, key, iv, cipher );
+    sgx_aes256_encrypt( (const uint8_t*)plain, sz, key, iv, cipher );
     printf("%s\n", Crypto::printable( std::string((char*)cipher,sz) ).c_str() );
-    sgx_aes128_decrypt( (const uint8_t*)cipher, sz, key, iv, recovered );
+    sgx_aes256_decrypt( (const uint8_t*)cipher, sz, key, iv, recovered );
     printf("%s\n", Crypto::printable( std::string((char*)recovered,sz).c_str() ).c_str());
 
     free(hash);
