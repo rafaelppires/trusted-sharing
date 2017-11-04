@@ -6,7 +6,7 @@
 #include "sgx_crypto.h"
 #include "sgx_ibbe.h"
 #include "sgx_spibbe.h"
-#include "serialization.h"
+#include "sgx_serialize.h"
 //#include <pthread.h>
 #include <unistd.h>
 
@@ -15,6 +15,7 @@
 #include <algorithm>
 
 //#include "pbc_test.h"
+int Configuration::UsersPerPartition = 2000;
 const int Configuration::CipherElemSize;
 
 void load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk)

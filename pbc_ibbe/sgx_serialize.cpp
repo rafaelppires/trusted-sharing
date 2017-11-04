@@ -1,10 +1,32 @@
-#include "serialization.h"
+#include "sgx_serialize.h"
 
 #include <string>
-#include <iostream>
-#include <sstream>
 
+#ifndef ENABLE_SGX
+#include <sstream>
+#include <iostream>
 #include <fstream>
+#else
+namespace stlpmtx_std {
+    struct stringstream {
+        stringstream () {}
+        stringstream ( const std::string &s ) : buffer(s) {}
+
+        void write( const char *p, size_t sz ) {
+            buffer += std::string(p,sz);
+        }
+
+        stringstream& operator<< (const std::string &in ) {
+            buffer += in;
+            return *this;
+        }
+
+        std::string str() { return buffer; }
+
+        std::string buffer;
+    };
+}
+#endif
 
 std::string serialize_members(std::vector<std::string>& members)
 {

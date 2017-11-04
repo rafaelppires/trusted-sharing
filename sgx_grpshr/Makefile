@@ -29,8 +29,9 @@ IBBECXX     := $(notdir $(wildcard $(IBBEDir)/sgx_*.cpp))
 BuildToken      := $(if $(is_sgx),$(SgxToken),$(NativeToken))
 GMPDir          := $(GMPRootDir)/build-$(BuildToken)
 PBCDir          := $(PBCRootDir)/build-$(BuildToken)
-SGXOSSLLDir     := $(realpath ../../intel-sgx-ssl/lib64/release/)
-SGXOSSLIDir     := $(realpath ../../intel-sgx-ssl/include/)
+OSSLDir         := $(realpath ../../intel-sgx-ssl)
+SGXOSSLLDir     := $(OSSLDir)/lib64/release/
+SGXOSSLIDir     := $(OSSLDir)/include/
 GMPLib          := $(GMPDir)/.libs/libgmp.a
 PBCLib          := $(PBCDir)/.libs/libpbc.a
 SGXOpenSSLLib   := $(SGXOSSLLDir)/libsgx_tsgxssl_crypto.a
@@ -137,7 +138,7 @@ $(IBBEC) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.c
 	@echo -e "CC ($(CompString))\t<=\t$<"
 
 $(IBBECXX) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.cpp
-	@${CXX} -c $< -o $@ ${CompCXXFlags} ${CompInclude}
+	${CXX} -c $< -o $@ ${CompCXXFlags} ${CompInclude}
 	@echo -e "CXX ($(CompString))\t<=\t$<"
 ############## UNTRUSTED #######################################################
 $(BinDir)/$(TARGET): ${NatvAllObjs} ${ExtLibs} | $(BinDir)
@@ -204,6 +205,15 @@ $(GMPRootDir)/build-$(SgxToken)/gmp.h :
 
 $(GMPRootDir)/build-$(NativeToken)/gmp.h :
 	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(LibsConfigFlags)
+
+$(SGXOpenSSLLib) : $(OSSLDir)/sgxssl.1.9.100.99999.tar.gz
+	cd $(OSSLDir) && tar xzf $<
+
+$(OSSLDir)/sgxssl.1.9.100.99999.tar.gz : $(OSSLDir)/openssl_source/openssl-1.1.0g.tar.gz
+	cd $(OSSLDir) && ./build_sgxssl.sh
+
+$(OSSLDir)/openssl_source/openssl-1.1.0g.tar.gz :
+	cd $(OSSLDir)/openssl_source/ && wget https://www.openssl.org/source/openssl-1.1.0g.tar.gz
 
 ################################################################################
 
