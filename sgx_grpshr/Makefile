@@ -194,8 +194,11 @@ $(EnclGenericComp) : $(ObjDir)/%_t.o : $(SrcDir)/%.cpp
 	@${CXX} -c $< -o $@ ${Encl_Include} ${Encl_CXXFlags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 ################################################################################
-$(PBCLib) : $(GMPLib)
+$(PBCLib) : $(GMPLib) $(PBCRootDir)/configure
 	rm -rf $(PBCDir) && mkdir -p $(PBCDir) && cd $(PBCDir) && LDFLAGS="-L$(GMPDir)/.libs" CPPFLAGS="-I$(PBCRootDir)/include -I$(GMPDir)" ../configure $(LibsConfigFlags) && make
+
+$(PBCRootDir)/configure:
+	cd $(PBCRootDir) && ./setup
 
 $(GMPLib) : $(GMPDir)/gmp.h
 	cd $(GMPDir) && make
