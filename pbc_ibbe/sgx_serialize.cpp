@@ -16,6 +16,12 @@ namespace stlpmtx_std {
             buffer += std::string(p,sz);
         }
 
+        void read( char *out, size_t sz ) {
+            size_t rd = 0;
+            memcpy(out, buffer.c_str(), rd=std::min(sz,buffer.size()) );
+            buffer.erase(0,rd);
+        }
+
         stringstream& operator<< (const std::string &in ) {
             buffer += in;
             return *this;
@@ -25,6 +31,22 @@ namespace stlpmtx_std {
 
         std::string buffer;
     };
+
+    bool getline(stringstream &ss, std::string &s, char delim) {
+        size_t nl = ss.buffer.find(delim);
+        if( nl == std::string::npos ) {
+            if( !ss.buffer.empty() ) {  
+                s = ss.buffer;
+                ss.buffer.clear();
+                return true;
+            } else {
+                return false;
+            }
+        }
+        s = ss.buffer.substr(0,nl);
+        ss.buffer.erase(0,nl+1);
+        return true;
+    }
 }
 #endif
 
@@ -167,6 +189,7 @@ void deserialize_partition(SpibbePartition& p, std::string members, std::string 
     }
 }
 
+#ifndef ENABLE_SGX
 void serialize_public_key_to_file(PublicKey pk, std::string file_name)
 {
     std::ofstream s(file_name);
@@ -311,6 +334,7 @@ void deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pair
 
     s.close();
 }
+#endif
 
 
 std::string serialize_spk_to_string(ShortPublicKey spk)

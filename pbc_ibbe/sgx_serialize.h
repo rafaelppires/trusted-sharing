@@ -20,6 +20,7 @@ std::string serialize_partition_members(SpibbePartition partition);
 std::string serialize_partition_meta(SpibbePartition partition);
 void deserialize_partition(SpibbePartition& partition, std::string members, std::string meta, pairing_t pairing);
 
+#ifndef ENABLE_SGX
 /* SYS Serialization */
 void serialize_public_key_to_file(PublicKey pk, std::string file_name);
 void deserialize_public_key_from_file(std::string file_name, PublicKey& pk);
@@ -29,6 +30,7 @@ void deserialize_short_public_key_from_file(std::string file_name, ShortPublicKe
 
 void serialize_msk_to_file(MasterSecretKey msk, std::string file_name);
 void deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pairing_t pairing);
+#endif
 
 /* Hybrid Serialization */
 std::string serialize_hybrid_keys(std::vector<std::string>& encryptedKeys);

@@ -18,6 +18,7 @@
 int Configuration::UsersPerPartition = 2000;
 const int Configuration::CipherElemSize;
 
+#ifndef ENABLE_SGX
 void load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk)
 {    
     // load paring file
@@ -33,6 +34,7 @@ void load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk)
     deserialize_short_public_key_from_file("sys.spk", spk);
     deserialize_msk_from_file("sys.msk", msk, spk.pairing);
 }
+#endif
 
 void fix_pairing(ShortPublicKey& spk)
 {

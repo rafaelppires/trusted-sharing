@@ -138,7 +138,7 @@ $(IBBEC) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.c
 	@echo -e "CC ($(CompString))\t<=\t$<"
 
 $(IBBECXX) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.cpp
-	${CXX} -c $< -o $@ ${CompCXXFlags} ${CompInclude}
+	@${CXX} -c $< -o $@ ${CompCXXFlags} ${CompInclude}
 	@echo -e "CXX ($(CompString))\t<=\t$<"
 ############## UNTRUSTED #######################################################
 $(BinDir)/$(TARGET): ${NatvAllObjs} ${ExtLibs} | $(BinDir)
