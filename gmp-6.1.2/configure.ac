@@ -91,8 +91,8 @@ esac],
 
 AM_CONDITIONAL([SGXENABLED], [test "$enable_sgx" = "yes"])
 if test "$enable_sgx" = "yes"; then
-  AC_DEFINE(ENABLE_SGX,1,
-  [Define to 1 to ENABLE_SGX, per --enable-sgx])
+  AC_DEFINE(ENCLAVED,1,
+  [Define to 1 to ENCLAVED, per --enable-sgx])
 fi
 
 AC_ARG_ENABLE(assert,

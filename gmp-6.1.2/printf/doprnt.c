@@ -43,7 +43,7 @@ see https://www.gnu.org/licenses/.  */
 #include <stdio.h>     /* for NULL */
 #include <stdlib.h>
 
-#ifdef ENABLE_SGX
+#ifdef ENCLAVED
 #undef HAVE_INTTYPES_H
 #undef HAVE_STDINT_H
 #undef HAVE_LANGINFO_H

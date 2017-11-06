@@ -3763,7 +3763,7 @@ fi
 
 if test "$enable_sgx" = "yes"; then
 
-$as_echo "#define ENABLE_SGX 1" >>confdefs.h
+$as_echo "#define ENCLAVED 1" >>confdefs.h
 
 fi
 

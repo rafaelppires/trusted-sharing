@@ -34,7 +34,7 @@ see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
-#ifdef ENABLE_SGX
+#ifdef ENCLAVED
 #include <libc_mock/libc_proxy.h>
 #else
 #include <signal.h>

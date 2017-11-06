@@ -33,7 +33,7 @@ AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir) \
   -DOPERATION_`echo $* | sed 's/_$$//'`
 
 if SGXENABLED
-AM_CPPFLAGS += -DENABLE_SGX -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
+AM_CPPFLAGS += -DENCLAVED -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
 endif
 
 OFILES = @mpn_objects@

@@ -42,7 +42,7 @@ see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
-#ifdef ENABLE_SGX
+#ifdef ENCLAVED
 #undef HAVE_LANGINFO_H
 #undef HAVE_LOCALE_H
 #endif
