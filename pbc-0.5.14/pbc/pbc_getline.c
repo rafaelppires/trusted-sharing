@@ -1,5 +1,5 @@
 #include <stdio.h>
-#ifdef ENABLE_SGX
+#ifdef ENCLAVED
 #include <libc_mock/libc_proxy.h>
 #endif
 #include <string.h>

@@ -35,7 +35,7 @@ see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
-#ifdef ENABLE_SGX
+#ifdef ENCLAVED
 #undef HAVE_OBSTACK_VPRINTF
 #endif
 

@@ -37,7 +37,7 @@ see https://www.gnu.org/licenses/.  */
 #include <stdio.h>
 #include <string.h>
 
-#ifdef ENABLE_SGX
+#ifdef ENCLAVED
 #undef HAVE_LANGINFO_H
 #undef HAVE_LOCALE_H
 #endif

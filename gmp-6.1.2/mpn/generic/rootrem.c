@@ -42,7 +42,7 @@ see https://www.gnu.org/licenses/.  */
      is M(n), whereas it should be M(n/k) on average.
 */
 
-#ifndef ENABLE_SGX
+#ifndef ENCLAVED
 #include <stdio.h>		/* for NULL */
 #else
 #include <libc_mock/libc_proxy.h>
