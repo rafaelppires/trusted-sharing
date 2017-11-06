@@ -3,7 +3,12 @@
 
 #include "sgx_ibbe.h"
 #include "sgx_spibbe.h"
+
+#if 0 // ignoring cloud stuff - Rafael
 #include "cloud.h"
+#else
+struct Cloud {};
+#endif
 
 class AdminApi
 {

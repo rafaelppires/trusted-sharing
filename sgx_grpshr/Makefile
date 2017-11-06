@@ -20,29 +20,31 @@ Enclave         := grpshr
 TARGET          := $(Enclave)
 NatvObjs        := $(TARGET).o
 EnclaveName     := enclave_$(Enclave)
-ExternalLibs    := pbc gmp 
+ExternalLibs    := pbc gmp crypto 
 
 IBBEDir     := ../pbc_ibbe
 IBBEC       := $(notdir $(wildcard $(IBBEDir)/sgx_*.c))
 IBBECXX     := $(notdir $(wildcard $(IBBEDir)/sgx_*.cpp))
 
 BuildToken      := $(if $(is_sgx),$(SgxToken),$(NativeToken))
-GMPDir          := $(GMPRootDir)/build-$(BuildToken)
-PBCDir          := $(PBCRootDir)/build-$(BuildToken)
+NtvGMPDir       := $(GMPRootDir)/build-$(NativeToken)
+NtvPBCDir       := $(PBCRootDir)/build-$(NativeToken)
+SgxGMPDir       := $(GMPRootDir)/build-$(SgxToken)
+SgxPBCDir       := $(PBCRootDir)/build-$(SgxToken)
 OSSLDir         := $(realpath ../../intel-sgx-ssl)
 SGXOSSLLDir     := $(OSSLDir)/lib64/release/
 SGXOSSLIDir     := $(OSSLDir)/include/
-GMPLib          := $(GMPDir)/.libs/libgmp.a
-PBCLib          := $(PBCDir)/.libs/libpbc.a
 SGXOpenSSLLib   := $(SGXOSSLLDir)/libsgx_tsgxssl_crypto.a
-ExtLibs         := $(PBCLib) $(GMPLib)
 LibsConfigFlags := --with-pic=yes --enable-shared=no
+App_Lib_Dirs    := $(addsuffix /.libs, $(NtvGMPDir) $(NtvPBCDir))
+App_Libs        := $(ExternalLibs)
 
 BinDir  := bin-$(BuildToken)
 ObjDir  := obj-$(BuildToken)
 
 ifeq ($(SGX),1)
-ExtLibs              += $(SGXOpenSSLLib)
+ExtLibs              += $(SgxGMPDir)/.libs/libgmp.a \
+                        $(SgxPBCDir)/.libs/libpbc.a  $(SGXOpenSSLLib)
 IBBEC                := $(IBBEC:%.c=%_t.o)
 IBBECXX              := $(IBBECXX:%.cpp=%_t.o)
 IBBEObjs             := $(IBBEC) $(IBBECXX)
@@ -56,11 +58,12 @@ SGX_ENCLAVE_SIGNER   := $(SGX_SDK)/bin/x64/sgx_sign
 SGX_EDGER8R          := $(SGX_SDK)/bin/x64/sgx_edger8r
 Trts_Library_Name    := sgx_trts
 Service_Library_Name := sgx_tservice
-App_Lib_Dirs         := $(SGX_LIBRARY_PATH) 
-App_Libs             := sgx_uae_service sgx_urts 
+App_Lib_Dirs         += $(SGX_LIBRARY_PATH) 
+App_Libs             += sgx_uae_service sgx_urts 
 SharedCompFlags      += -DENABLE_SGX -DSGX_OPENSSL
-IncludeDirs          += $(SGX_SDK)/include
-NatvObjs             += ocalls.o
+NatvIncludeDirs      += $(SGX_SDK)/include
+NatvObjs             += ocalls.o tests_u.o sgx_spibbe_u.o sgx_crypto_u.o \
+                        sgx_serialize_u.o sgx_ibbe_u.o
 NatvObjs             := $(filter-out $(EnclAllObjs), $(NatvObjs)) \
 	                    $(EnclaveName)_u.o
 NatvCommonObjs       := $(ObjDir)/sgx_initenclave_u.o $(ObjDir)/sgx_errlist_u.o
@@ -84,6 +87,7 @@ EnclaveLFlags := -Wl,--no-undefined -nostdlib \
 	-Wl,--defsym,__ImageBase=0 \
 	-Wl,--version-script=$(SrcDir)/$(EnclaveName).lds \
     $(addprefix -l, $(ExternalLibs) sgx_tstdc)
+SharedEnclFlags := -DENCLAVED
 SharedEnclFlags += $(SharedCompFlags) -nostdinc -fvisibility=hidden \
 	               -fpie -fstack-protector -fno-builtin-printf
 Encl_CFlags     := $(SharedEnclFlags) $(CFlags) \
@@ -91,32 +95,30 @@ Encl_CFlags     := $(SharedEnclFlags) $(CFlags) \
 Encl_CXXFlags   := $(SharedEnclFlags) $(CXXFlags) -nostdinc++
 Enclave_IncDirs := $(SGX_SDK)/include/stlport $(SrcDir) $(SGX_SDK)/include \
                    $(SGX_SDK)/include/tlibc $(SGX_COMMONDIR) \
-                   $(PBCRootDir)/include $(GMPDir) $(SGXOSSLIDir)
+                   $(PBCRootDir)/include $(SgxGMPDir) $(SGXOSSLIDir)
 Encl_Include    := $(addprefix -I, $(Enclave_IncDirs) $(IBBEDir))
 EnclAllObjs     := $(addprefix $(ObjDir)/,$(EnclAllObjs))
 LibsConfigFlags += --enable-sgx
 all: $(BinDir)/$(TARGET) $(BinDir)/$(TARGET).signed.so
 $(addprefix $(ObjDir)/,server_protocol.o $(TARGET).o): $(SrcDir)/$(EnclaveName)_u.c
 $(ObjDir)/query_manager.o : $(SrcDir)/$(EnclaveName)_t.c
+$(ObjDir)/$(EnclaveName)_t.o : $(SgxGMPDir)/gmp.h
 else
-App_Lib_Dirs   := $(dir $(ExtLibs))
-App_Libs       := $(ExternalLibs)
-NatvCommonObjs := $(addprefix $(ObjDir)/, sgx_cryptoall_u.o)
 IBBEC          := $(IBBEC:%.c=%_u.o)
 IBBECXX        := $(IBBECXX:%.cpp=%_u.o)
 IBBEObjs       := $(IBBEC) $(IBBECXX)
 NatvObjs       += ecalls_$(Enclave).o $(IBBEObjs)
-IncludeDirs    += $(IBBEDir)
 LDFLAGS        := -lcrypto -lcrypto++
 all: $(BinDir)/$(TARGET)
 endif
 
-Natv_CXXFlags  := $(SharedCompFlags) $(CXXFlags)
-IncludeDirs    += $(SrcDir) $(SGX_COMMONDIR) $(PBCRootDir)/include/ $(GMPDir)/ \
-                  ../pbc_ibbe
-Natv_Include   := $(addprefix -I, $(IncludeDirs))
+NatvCommonObjs  += $(addprefix $(ObjDir)/, sgx_cryptoall_u.o)
+Natv_CXXFlags   := $(SharedCompFlags) $(CXXFlags)
+NatvIncludeDirs += $(SrcDir) $(SGX_COMMONDIR) $(PBCRootDir)/include/ \
+                   $(GMPRootDir)/build-ntv/ ../pbc_ibbe
+Natv_Include   := $(addprefix -I, $(NatvIncludeDirs))
 App_Link_Flags := $(addprefix -L, $(App_Lib_Dirs)) \
-                  $(addprefix -l, $(App_Libs))
+                  $(addprefix -l, $(App_Libs)) 
 NatvAllObjs    += $(addprefix $(ObjDir)/, $(NatvObjs)) $(NatvCommonObjs)
 
 ObjSuffix    := $(if $(is_sgx),t,u)
@@ -130,7 +132,7 @@ IBBEObjs := $(addprefix $(ObjDir)/, $(IBBEObjs))
 EnclCommonObjs := $(addprefix $(ObjDir)/, $(EnclCommonObjs))
 EnclGenericComp := $(filter-out $(ObjDir)/$(EnclaveName)_t.o $(IBBEObjs) $(EnclCommonObjs), $(EnclAllObjs))
 
-$(ObjDir)/$(TARGET).o : $(GMPDir)/gmp.h
+$(ObjDir)/$(TARGET).o : $(NtvGMPDir)/gmp.h
 
 ############## COMMON ##########################################################
 $(IBBEC) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.c
@@ -141,7 +143,7 @@ $(IBBECXX) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.cpp
 	@${CXX} -c $< -o $@ ${CompCXXFlags} ${CompInclude}
 	@echo -e "CXX ($(CompString))\t<=\t$<"
 ############## UNTRUSTED #######################################################
-$(BinDir)/$(TARGET): ${NatvAllObjs} ${ExtLibs} | $(BinDir)
+$(BinDir)/$(TARGET): ${NatvAllObjs} ${NtvExtLibs} | $(BinDir)
 	@${CXX} $^ -o $@ ${App_Link_Flags} ${LDFLAGS}
 	@echo -e "LINK (App)\t=>\t$@"
 
@@ -153,10 +155,17 @@ $(ObjDir)/%.o : $(SrcDir)/%.cpp | $(ObjDir)
 	@${CXX} ${Natv_CXXFlags} ${Natv_Include} -c $< -o $@
 	@echo -e "CXX (App)\t<=\t$<"
 
+$(ObjDir)/%_u.o : $(IBBEDir)/%.c | $(ObjDir)
+	@${CC} ${Natv_CFlags} ${Natv_Include} -c $< -o $@
+	@echo -e "CC (App)\t<=\t$<"
+
+$(ObjDir)/%_u.o : $(IBBEDir)/%.cpp | $(ObjDir)
+	@${CXX} ${Natv_CXXFlags} ${Natv_Include} -c $< -o $@
+	@echo -e "CXX (App)\t<=\t$<"
+
 $(SrcDir)/$(EnclaveName)_u.c : $(SrcDir)/$(EnclaveName).edl $(SGX_EDGER8R)
 	@cd $(dir $@) && $(SGX_EDGER8R) --untrusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
 	@echo -e "EDGER (App)\t=>\t$@"
-	@echo $(EnclGenericComp) " <<<" 
 
 $(NatvCommonObjs) : $(ObjDir)/%_u.o : $(SGX_COMMONDIR)/%.cpp | $(ObjDir)
 	@${CXX} -c $< -o $@ ${Natv_CXXFlags} ${Natv_Include}
@@ -191,17 +200,19 @@ $(ObjDir)/%_t.o : $(SGX_COMMONDIR)/%.cpp
 	@echo -e "CXX (Enclave)\t<=\t$<"
 
 $(EnclGenericComp) : $(ObjDir)/%_t.o : $(SrcDir)/%.cpp
-	@${CXX} -c $< -o $@ ${Encl_Include} ${Encl_CXXFlags}
+	${CXX} -c $< -o $@ ${Encl_Include} ${Encl_CXXFlags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 ################################################################################
-$(PBCLib) : $(GMPLib) $(PBCRootDir)/configure
+%/libpbc.a : %/libgmp.a $(PBCRootDir)/configure
+	echo "------ $<"
+	exit -1
 	rm -rf $(PBCDir) && mkdir -p $(PBCDir) && cd $(PBCDir) && LDFLAGS="-L$(GMPDir)/.libs" CPPFLAGS="-I$(PBCRootDir)/include -I$(GMPDir)" ../configure $(LibsConfigFlags) && make
 
 $(PBCRootDir)/configure:
 	cd $(PBCRootDir) && ./setup
 
-$(GMPLib) : $(GMPDir)/gmp.h
-	cd $(GMPDir) && make
+%/.libs/libgmp.a : %/gmp.h
+	cd $(dir $<) && make
 
 $(GMPRootDir)/build-$(SgxToken)/gmp.h :
 	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(LibsConfigFlags) && sed -i '39,42{s/^\/\///}' gmp.h

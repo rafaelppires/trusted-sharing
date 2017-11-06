@@ -20,7 +20,7 @@ std::string serialize_partition_members(SpibbePartition partition);
 std::string serialize_partition_meta(SpibbePartition partition);
 void deserialize_partition(SpibbePartition& partition, std::string members, std::string meta, pairing_t pairing);
 
-#ifndef ENABLE_SGX
+#ifndef ENCLAVED
 /* SYS Serialization */
 void serialize_public_key_to_file(PublicKey pk, std::string file_name);
 void deserialize_public_key_from_file(std::string file_name, PublicKey& pk);

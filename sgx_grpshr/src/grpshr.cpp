@@ -48,78 +48,7 @@ extern void ecall_handlerequest( int a, int b );
 
 #include <vector>
 #include <string>
-void generate_members(std::vector<std::string>& members, int start, int end)
-{
-    for (int i = start; i < end; i++)
-    {
-        char* ss = (char*) malloc(MAX_STRING_LENGTH);
-        sprintf(ss, "test%d@mail.com", i);
-        std::string s(ss);
-        members.push_back(s);
-    }
-}
-
-void sgx_level_bvt(int argc, char** argv)
-{
-    printf("Testing SGX_LEVEL_BVT ...");
-
-    //
-    int g_size = 1905;
-    int p_size = 200;
-
-    // system set-up
-    PublicKey pubKey;
-    MasterSecretKey msk;
-    ShortPublicKey shortPubKey;
-
-    // load paring file
-    char s[16384];
-    FILE *fp = stdin;
-    if (argc > 1) {
-    fp = fopen(argv[1], "r");
-    if (!fp) pbc_die("error opening %s", argv[1]);
-    }
-    size_t count = fread(s, 1, 16384, fp);
-    if (!count) pbc_die("input error");
-    fclose(fp);
-
-#ifdef ENABLE_SGX
-    /*ecall_setup_sgx_safe( global_eid, &pubKey, &shortPubKey, &msk,
-                          p_size, s, count );*/
-#else
-    setup_sgx_safe( &pubKey, &shortPubKey, &msk, p_size, s, count );
-#endif
-
-    // generate mock members
-    std::vector<std::string> members;
-    generate_members(members, 0, g_size);
-
-    // create group
-    std::vector<SpibbePartition> partitions;
-
-#ifdef ENABLE_SGX
-    /*unsigned char* g_key = ecall_sp_ibbe_create_group( global_eid,
-                                partitions, shortPubKey, msk,
-                                members, p_size);*/
-#else
-    unsigned char* g_key = sp_ibbe_create_group( partitions, shortPubKey, msk,
-                                                 members, p_size );
-#endif
-
-    if (partitions.size() != 10)
-    {
-        printf("TEST FAILED !!!\n");
-        return;
-    }
-    if (partitions[9].members.size() != 105)
-    {
-        printf("TEST FAILED %lu !!!\n", partitions[9].members.size());
-        return;
-    }
-
-    printf("\033[32;1m TEST PASSED \033[0m\n");
-}
-
+#include <tests.h>
 
 int main( int argc, char **argv ) {
 #ifdef ENABLE_SGX
@@ -141,6 +70,7 @@ int main( int argc, char **argv ) {
 //    ret2 = ecall_handlerequest(global_eid, 256,1536);
 //    char* s[2] = {"main\0", "a.param\0"};
 //    sgx_level_bvt(2, s);
+    test_border_sgx_create_group(0,0);
 #else
     FILE *f = fopen("/dev/urandom","r");
     unsigned int seed;

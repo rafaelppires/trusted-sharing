@@ -1,11 +1,12 @@
 #include "sgx_crypto.h"
-#ifndef ENABLE_SGX // sgx {
+#ifndef ENCLAVED  // sgx {
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #else             // } else {
 #include <libc_mock/libc_proxy.h>
+#include <sgx_tcrypto.h>
 #endif            // }
 #include <sgx_cryptoall.h>
 #include <stdlib.h>
@@ -49,7 +50,7 @@ void sgx_aes256_decrypt(
 int rsa_encryption( const uint8_t* plaintext, size_t plain_len,
                     char* key, uint8_t* ciphertext, size_t cipher_len )
 {
-#ifndef ENABLE_SGX
+#ifndef ENCLAVED
     BIO *bio_buffer = NULL;
     RSA *rsa = NULL;
 
@@ -73,7 +74,7 @@ int rsa_encryption( const uint8_t* plaintext, size_t plain_len,
 int rsa_decryption(const uint8_t* ciphertext, size_t cipher_len,
                    char* key, uint8_t* plaintext, size_t plain_len)
 {
-#ifndef ENABLE_SGX
+#ifndef ENCLAVED
     BIO *bio_buffer = NULL;
     RSA *rsa = NULL;
 
@@ -98,7 +99,7 @@ uint8_t* sgx_sha256(const uint8_t *d,
     size_t n, 
     uint8_t *md)
 {
-#ifndef ENABLE_SGX
+#ifndef ENCLAVED
     return SHA256(d, n, md);
 #else
     return sgx_sha256_msg(d,n,(uint8_t(*)[32])md) == SGX_SUCCESS ? md : NULL;

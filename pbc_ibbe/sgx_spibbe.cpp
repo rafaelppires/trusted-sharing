@@ -18,7 +18,7 @@
 int Configuration::UsersPerPartition = 2000;
 const int Configuration::CipherElemSize;
 
-#ifndef ENABLE_SGX
+#ifndef ENCLAVED
 void load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk)
 {    
     // load paring file

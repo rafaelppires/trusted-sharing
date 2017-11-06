@@ -19,10 +19,11 @@
 
 static inline void microbenchmarks()
 {
+#if 0 // ignoring cloud stuff - Rafael    
     Configuration::UsersPerPartition = 2000;
     std::string u = "test0@mail.com";
     std::string a = "master";
-    
+
     //Cloud* c = new RedisCloud();
     Cloud* c = new DropboxCloud();
     
@@ -44,8 +45,9 @@ static inline void microbenchmarks()
     
     micro_decrypt_key(spibbeAdmin, spibbeUser);
     micro_decrypt_key(hybridAdmin, hybridUser);
-
- */ }
+*/
+#endif
+}
 
 
 // MICROBENCH_H
