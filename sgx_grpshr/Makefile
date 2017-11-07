@@ -102,7 +102,7 @@ LibsConfigFlags += --enable-sgx
 all: $(BinDir)/$(TARGET) $(BinDir)/$(TARGET).signed.so
 $(addprefix $(ObjDir)/,server_protocol.o $(TARGET).o): $(SrcDir)/$(EnclaveName)_u.c
 $(ObjDir)/query_manager.o : $(SrcDir)/$(EnclaveName)_t.c
-$(ObjDir)/$(EnclaveName)_t.o : $(SgxGMPDir)/gmp.h
+$(ObjDir)/$(EnclaveName)_t.o : $(SgxGMPDir)/gmp.h $(SgxGMPDir)/.libs/libgmp.a $(SgxPBCDir)/.libs/libpbc.a $(SGXOpenSSLLib)
 else
 IBBEC          := $(IBBEC:%.c=%_u.o)
 IBBECXX        := $(IBBECXX:%.cpp=%_u.o) tests_u.o
@@ -132,7 +132,7 @@ IBBEObjs := $(addprefix $(ObjDir)/, $(IBBEObjs))
 EnclCommonObjs := $(addprefix $(ObjDir)/, $(EnclCommonObjs))
 EnclGenericComp := $(filter-out $(ObjDir)/$(EnclaveName)_t.o $(IBBEObjs) $(EnclCommonObjs), $(EnclAllObjs))
 
-$(ObjDir)/$(TARGET).o : $(NtvGMPDir)/gmp.h
+$(ObjDir)/$(TARGET).o : $(NtvGMPDir)/gmp.h $(NtvGMPDir)/.libs/libgmp.a $(NtvPBCDir)/.libs/libpbc.a 
 
 ############## COMMON ##########################################################
 $(IBBEC) : $(ObjDir)/%_$(ObjSuffix).o : $(IBBEDir)/%.c
@@ -203,21 +203,25 @@ $(EnclGenericComp) : $(ObjDir)/%_t.o : $(SrcDir)/%.cpp
 	${CXX} -c $< -o $@ ${Encl_Include} ${Encl_CXXFlags}
 	@echo -e "CXX (Enclave)\t<=\t$<"
 ################################################################################
-%/libpbc.a : %/libgmp.a $(PBCRootDir)/configure
-	echo "------ $<"
-	exit -1
+$(PBCRootDir)/%/libpbc.a : $(GMPRootDir)/%/libgmp.a $(PBCRootDir)/configure
+	$(eval Tmp := $(dir $@))
+	$(eval PBCDir := $(Tmp:%/.libs/=%))
+	$(eval Tmp := $(dir $<))
+	$(eval GMPDir := $(Tmp:%/.libs/=%))
 	rm -rf $(PBCDir) && mkdir -p $(PBCDir) && cd $(PBCDir) && LDFLAGS="-L$(GMPDir)/.libs" CPPFLAGS="-I$(PBCRootDir)/include -I$(GMPDir)" ../configure $(LibsConfigFlags) && make
 
 $(PBCRootDir)/configure:
 	cd $(PBCRootDir) && ./setup
 
 %/.libs/libgmp.a : %/gmp.h
-	cd $(dir $<) && make
+	$(MAKE) -C $(dir $<)
 
 $(GMPRootDir)/build-$(SgxToken)/gmp.h :
+	$(eval GMPDir := $(dir $@))
 	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(LibsConfigFlags) && sed -i '39,42{s/^\/\///}' gmp.h
 
 $(GMPRootDir)/build-$(NativeToken)/gmp.h :
+	$(eval GMPDir := $(dir $@))
 	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(LibsConfigFlags)
 
 $(SGXOpenSSLLib) : $(OSSLDir)/sgxssl.1.9.100.99999.tar.gz
