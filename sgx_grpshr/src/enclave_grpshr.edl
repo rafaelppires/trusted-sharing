@@ -7,6 +7,7 @@ enclave {
 
     trusted {
         public void ecall_handlerequest( int p1, int p2 );
+        public int ecall_create_group([in, size=in_buffer_size] const char* in_buffer, int in_buffer_size, [out,size=outbuff_max] char* out_buffer, size_t outbuff_max);
     };
 };
 

@@ -19,20 +19,31 @@ int Configuration::UsersPerPartition = 2000;
 const int Configuration::CipherElemSize;
 
 #ifndef ENCLAVED
-void load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk)
+int load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk)
 {    
     // load paring file
-    char s[16384];
-    FILE *fp = fopen("a.param", "r");
+    char s[16384], *fname = "a.param";
+    FILE *fp = fopen(fname, "r");
+    if( !fp ) {
+        printf("Unable to open file %s\n", fname);
+        return -1;
+    }
+
     size_t count = fread(s, 1, 16384, fp);
     fclose(fp);    
     
     pairing_init_set_buf(spk.pairing, s, count);
     pairing_init_set_buf(pk.pairing, s, count);
 
-    deserialize_public_key_from_file("sys.pk", pk);
-    deserialize_short_public_key_from_file("sys.spk", spk);
-    deserialize_msk_from_file("sys.msk", msk, spk.pairing);
+    int error;
+    if( deserialize_public_key_from_file("sys.pk", pk) ||
+        deserialize_short_public_key_from_file("sys.spk", spk) ||
+        deserialize_msk_from_file("sys.msk", msk, spk.pairing) ) {
+        printf("Error reading key files\n");
+        return -2;
+    }
+
+    return 0;
 }
 #endif
 
@@ -63,8 +74,8 @@ int get_user_index(std::vector<std::string>& members, std::string user_id)
     }
 }
 
-
-int ecall_create_group(const char* in_buffer, int in_buffer_size, char* out_buffer)
+#if defined(ENCLAVED) || !defined(ENABLE_SGX)
+int ecall_create_group(const char* in_buffer, size_t in_buffer_size, char* out_buffer, size_t outbuff_max)
 {
     // deserialize the input buffer
     ShortPublicKey spk;
@@ -91,8 +102,9 @@ int ecall_create_group(const char* in_buffer, int in_buffer_size, char* out_buff
     
     // deep copy to output buffer
     const std::string::size_type size = out_s.size();
-    memcpy(out_buffer, out_s.c_str(), out_s.size());
-    return out_s.size();
+    size_t ret;
+    memcpy(out_buffer, out_s.c_str(), ret = std::min(outbuff_max,out_s.size()));
+    return ret;
 }
 
 void sgx_borded_add_user(const char* in_buffer, char* out_buffer)
@@ -104,7 +116,7 @@ void sgx_border_remove_user(const char* in_buffer, char* out_buffer)
 {
     // ...
 }
-
+#endif
 
 unsigned char* sp_ibbe_create_group(
     std::vector<SpibbePartition>& partitions,

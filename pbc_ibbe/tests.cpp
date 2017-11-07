@@ -9,6 +9,11 @@
 #include <time.h>
 #include <string>
 
+#ifdef ENABLE_SGX
+#include <enclave_grpshr_u.h>
+extern sgx_enclave_id_t global_eid;    /* global enclave id */
+#endif
+
 #include <iostream>
 #include <sstream>
 #include <fstream>  
@@ -29,14 +34,17 @@ void generate_members(std::vector<std::string>& members, int start, int end)
  */
 void test_border_sgx_create_group(int argc, char** argv)
 {
-    printf("Testing sgx border CREATE GROUP ...");
+    printf("Testing sgx border CREATE GROUP ... "); fflush(stdout);
     int g_size = 10000;
     
     // system set-up
     PublicKey pubKey;
     MasterSecretKey msk;
     ShortPublicKey shortPubKey;
-    load_system(pubKey, shortPubKey, msk);
+    if( load_system(pubKey, shortPubKey, msk) ) {
+        printf("Error loading keys\n");
+        return;
+    }
     
     // generate mock users
     std::vector<std::string> members;
@@ -48,7 +56,13 @@ void test_border_sgx_create_group(int argc, char** argv)
     
     // create group by calling into SGX
     char out_buffer[4096]; // FIX ME: hardcoded value, should be dynamic based on partitions count
-    int out_buffer_size = ecall_create_group(in_buffer.c_str(), in_buffer.size(), out_buffer);
+    int out_buffer_size;
+#ifdef ENABLE_SGX
+     if( SGX_SUCCESS != ecall_create_group(global_eid, &out_buffer_size, in_buffer.c_str(), in_buffer.size(), out_buffer, sizeof(out_buffer) ) )
+        printf("Error during ecall\n");
+#else
+    out_buffer_size = ecall_create_group(in_buffer.c_str(), in_buffer.size(), out_buffer, sizeof(out_buffer) );
+#endif
     
     // quick verification on the returned content from SGX
     if (out_buffer_size != 2192)

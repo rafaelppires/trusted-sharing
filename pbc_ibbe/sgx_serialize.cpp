@@ -221,9 +221,13 @@ void serialize_msk_to_file(MasterSecretKey msk, std::string file_name)
     s.close();
 }
 
-void deserialize_public_key_from_file(std::string file_name, PublicKey& pk)
+int deserialize_public_key_from_file(std::string file_name, PublicKey& pk)
 {
     std::ifstream s(file_name);
+    if( !s.good() ) {
+        printf("Couldn't open file %s\n", file_name.c_str());
+        return -1;
+    }
     
     int h_count;
     s.read(reinterpret_cast<char*>(&h_count), sizeof(h_count));
@@ -251,11 +255,17 @@ void deserialize_public_key_from_file(std::string file_name, PublicKey& pk)
     }
     
     s.close();
+    return 0;
 }
 
-void deserialize_short_public_key_from_file(std::string file_name, ShortPublicKey& spk)
+int deserialize_short_public_key_from_file(std::string file_name, ShortPublicKey& spk)
 {
     std::ifstream s(file_name);
+    if( !s.good() ) {
+        printf("Couldn't open file %s\n", file_name.c_str());
+        return -1;
+    }
+    
     int elem_size = 128;
     unsigned char w_bytes[elem_size];
     s.read(reinterpret_cast<char*>(w_bytes), elem_size);
@@ -273,11 +283,16 @@ void deserialize_short_public_key_from_file(std::string file_name, ShortPublicKe
     element_from_bytes(spk.h, h_bytes);
 
     s.close();
+    return 0;
 }
 
-void deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pairing_t pairing)
+int deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pairing_t pairing)
 {
     std::ifstream s(file_name);
+    if( !s.good() ) {
+        printf("Couldn't open file %s\n", file_name.c_str());
+        return -1;
+    }
 
     int g_elem_size = 128;
     unsigned char g_bytes[g_elem_size];
@@ -293,6 +308,7 @@ void deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pair
     element_from_bytes(msk.gamma, gamma_bytes);
 
     s.close();
+    return 0;
 }
 #endif
 

@@ -105,7 +105,7 @@ $(ObjDir)/query_manager.o : $(SrcDir)/$(EnclaveName)_t.c
 $(ObjDir)/$(EnclaveName)_t.o : $(SgxGMPDir)/gmp.h
 else
 IBBEC          := $(IBBEC:%.c=%_u.o)
-IBBECXX        := $(IBBECXX:%.cpp=%_u.o)
+IBBECXX        := $(IBBECXX:%.cpp=%_u.o) tests_u.o
 IBBEObjs       := $(IBBEC) $(IBBECXX)
 NatvObjs       += ecalls_$(Enclave).o $(IBBEObjs)
 LDFLAGS        := -lcrypto -lcrypto++

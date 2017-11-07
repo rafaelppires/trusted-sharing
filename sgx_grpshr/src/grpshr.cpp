@@ -21,12 +21,12 @@ Equivalence to RSA:
 */
 
 #include <stdio.h>
+#include <unistd.h>
+#include <libgen.h>
 
 #ifdef ENABLE_SGX
 #include <enclave_grpshr_u.h>
 #include <sgx_initenclave.h>
-#include <unistd.h>
-#include <libgen.h>
 sgx_enclave_id_t global_eid = 0;    /* global enclave id */
 #else
 #include <pbc.h>
@@ -36,28 +36,20 @@ extern void ecall_handlerequest( int a, int b );
 /*
  * Test the SPIBBE methods at SGX level. No cloud involved. 
  */
-#ifdef ENABLE_SGX
-#undef ENABLE_SGX
 #include <sgx_ibbe.h>
 #include <sgx_spibbe.h>
-#define ENABLE_SGX
-#else
-#include <sgx_ibbe.h>
-#include <sgx_spibbe.h>
-#endif
 
 #include <vector>
 #include <string>
 #include <tests.h>
 
 int main( int argc, char **argv ) {
-#ifdef ENABLE_SGX
     /* Changing dir to where the executable is.*/
     char *ptr = realpath( dirname(argv[0]),NULL );
-
     if( ptr == NULL ){ perror("Error:"); abort(); }
     if( chdir(ptr) != 0) abort();
 
+#ifdef ENABLE_SGX
     /* Initialize the enclave */
     if(initialize_enclave( global_eid,
                            "grpshr.signed.so","enclave.grpshrpbc.token") < 0) {
@@ -65,12 +57,11 @@ int main( int argc, char **argv ) {
     }
     free(ptr);
 
-    sgx_status_t ret1, ret2;
-    ret1 = ecall_handlerequest(global_eid, 224,1024);
+//    sgx_status_t ret1, ret2;
+//    ret1 = ecall_handlerequest(global_eid, 224,1024);
 //    ret2 = ecall_handlerequest(global_eid, 256,1536);
 //    char* s[2] = {"main\0", "a.param\0"};
 //    sgx_level_bvt(2, s);
-    test_border_sgx_create_group(0,0);
 #else
     FILE *f = fopen("/dev/urandom","r");
     unsigned int seed;
@@ -93,5 +84,6 @@ int main( int argc, char **argv ) {
 	fclose(pf1);
 #endif
 #endif
+    test_border_sgx_create_group(0,0);
 }
 

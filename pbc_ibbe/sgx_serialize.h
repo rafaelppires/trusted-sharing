@@ -23,13 +23,13 @@ void deserialize_partition(SpibbePartition& partition, std::string members, std:
 #ifndef ENCLAVED
 /* SYS Serialization */
 void serialize_public_key_to_file(PublicKey pk, std::string file_name);
-void deserialize_public_key_from_file(std::string file_name, PublicKey& pk);
+int deserialize_public_key_from_file(std::string file_name, PublicKey& pk);
 
 void serialize_short_public_key_to_file(ShortPublicKey spk, std::string file_name);
-void deserialize_short_public_key_from_file(std::string file_name, ShortPublicKey& spk);
+int deserialize_short_public_key_from_file(std::string file_name, ShortPublicKey& spk);
 
 void serialize_msk_to_file(MasterSecretKey msk, std::string file_name);
-void deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pairing_t pairing);
+int deserialize_msk_from_file(std::string file_name, MasterSecretKey& msk, pairing_t pairing);
 #endif
 
 /* Hybrid Serialization */

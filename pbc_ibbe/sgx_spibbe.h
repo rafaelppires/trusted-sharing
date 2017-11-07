@@ -23,13 +23,17 @@ typedef struct {
 /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */ 
 /* -------- SGX BORDER METHODS -------- */ 
 /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */ 
+#if defined(ENCLAVED) || ! defined(ENABLE_SGX)
+extern "C" {
 
-int ecall_create_group(const char* in_buffer, int in_bufer_size, char* p_out_buffer);
+int ecall_create_group(const char* in_buffer, size_t in_bufer_size, char* p_out_buffer, size_t outbuff_max);
 
 int ecall_borded_add_user(const char* in_buffer, char* out_buffer);
 
 int ecall_border_remove_user(const char* in_buffer, char* out_buffer);
 
+}
+#endif
 /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */ 
 /* end SGX border methods */
 /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */ 
@@ -73,7 +77,7 @@ int sp_ibbe_user_decrypt(
     int usersPerPartition);
 
 /* OTHER */
-void load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk);
+int load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk);
 
 
 // SP_IBBE_H
