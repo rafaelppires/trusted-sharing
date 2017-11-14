@@ -14,6 +14,10 @@
 #include <string>
 #include <algorithm>
 
+#ifdef ENCLAVED
+#include <sgx_cryptoall.h>
+#endif
+
 //#include "pbc_test.h"
 int Configuration::UsersPerPartition = 2000;
 const int Configuration::CipherElemSize;
@@ -22,7 +26,9 @@ const int Configuration::CipherElemSize;
 int load_system(PublicKey& pk, ShortPublicKey& spk, MasterSecretKey& msk)
 {    
     // load paring file
-    char s[16384], *fname = "a.param";
+    char s[16384];
+    const char *fname = "a.param";
+
     FILE *fp = fopen(fname, "r");
     if( !fp ) {
         printf("Unable to open file %s\n", fname);
@@ -92,18 +98,18 @@ int ecall_create_group(const char* in_buffer, size_t in_buffer_size, char* out_b
     unsigned char* group_key = 
         sp_ibbe_create_group(partitions, spk, msk, members, usersPerPartition);
     
-    // TODO : seal group key by calling SGX api
-    // ...
-    
     // serialize output
     std::string out_s;
     serialize_create_group_output(group_key, partitions, out_s);
     // printf("serialize output size : %d\n", out_s.size());
     
+#ifdef ENCLAVED
+    out_s = Crypto::sealSigner( out_s );
+#endif
+    
     // deep copy to output buffer
-    const std::string::size_type size = out_s.size();
-    size_t ret;
-    memcpy(out_buffer, out_s.c_str(), ret = std::min(outbuff_max,out_s.size()));
+    size_t sz = out_s.size(), ret;
+    memcpy(out_buffer, out_s.c_str(), ret = std::min(outbuff_max,sz));
     return ret;
 }
 
