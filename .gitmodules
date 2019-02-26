@@ -1,0 +1,6 @@
+[submodule "intel-sgx-ssl"]
+	path = intel-sgx-ssl
+	url = https://github.com/intel/intel-sgx-ssl.git
+[submodule "sgx_common"]
+	path = sgx_common
+	url = https://gitlab.securecloud.works/rafael.pires/sgx_common.git

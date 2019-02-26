@@ -143,11 +143,11 @@ DISTCLEANFILES = $(BUILT_SOURCES) config.m4 @gmp_srclinks@
 AM_CPPFLAGS=-D__GMP_WITHIN_GMP 
 
 if SGXENABLED
-AM_CPPFLAGS += -DENCLAVED -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
+AM_CPPFLAGS += -DENCLAVED -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH) -I$(SGXCOMMONPATH)/enclave_include/
 endif
 
 export SGXSDKPATH = /opt/intel/sgxsdk
-export SGXCOMMONPATH = @sgxcommon_path@ 
+export SGXCOMMONPATH = @sgxcommon_path@
 
 MPF_OBJECTS = mpf/init$U.lo mpf/init2$U.lo mpf/inits$U.lo mpf/set$U.lo	    \
   mpf/set_ui$U.lo mpf/set_si$U.lo mpf/set_str$U.lo mpf/set_d$U.lo	    \

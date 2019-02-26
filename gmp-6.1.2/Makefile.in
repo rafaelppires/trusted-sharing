@@ -187,7 +187,8 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@SGXENABLED_TRUE@am__append_1 = -DENCLAVED -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
+@SGXENABLED_TRUE@am__append_1 = -DENCLAVED -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH) -I$(SGXCOMMONPATH)/enclave_include/
+
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -1392,7 +1393,7 @@ uninstall-am: uninstall-includeHEADERS uninstall-libLTLIBRARIES \
 
 
 export SGXSDKPATH = /opt/intel/sgxsdk
-export SGXCOMMONPATH = @sgxcommon_path@ 
+export SGXCOMMONPATH = @sgxcommon_path@
 
 install-data-hook:
 	@echo ''

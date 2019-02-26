@@ -5,7 +5,7 @@ SGX            := 0
 
 is_sgx         :=$(SGX:0=)
 SrcDir         := src
-SGX_COMMONDIR  := $(realpath ../../sgx_common)
+SGX_COMMONDIR  := $(realpath ../sgx_common)
 PBCRootDir     := $(realpath ../pbc-0.5.14)
 GMPRootDir     := $(realpath ../gmp-6.1.2)
 
@@ -31,9 +31,9 @@ NtvGMPDir       := $(GMPRootDir)/build-$(NativeToken)
 NtvPBCDir       := $(PBCRootDir)/build-$(NativeToken)
 SgxGMPDir       := $(GMPRootDir)/build-$(SgxToken)
 SgxPBCDir       := $(PBCRootDir)/build-$(SgxToken)
-OSSLDir         := $(realpath ../../intel-sgx-ssl)
-SGXOSSLLDir     := $(OSSLDir)/lib64/release/
-SGXOSSLIDir     := $(OSSLDir)/include/
+OSSLDir         := $(realpath ../intel-sgx-ssl)
+SGXOSSLLDir     := $(OSSLDir)/Linux/package/lib64/
+SGXOSSLIDir     := $(OSSLDir)/Linux/package/include/
 SGXOpenSSLLib   := $(SGXOSSLLDir)/libsgx_tsgxssl_crypto.a
 LibsConfigFlags := --with-pic=yes --enable-shared=no
 App_Lib_Dirs    := $(addsuffix /.libs, $(NtvGMPDir) $(NtvPBCDir))
@@ -66,7 +66,7 @@ NatvObjs             += ocalls.o tests_u.o sgx_spibbe_u.o sgx_crypto_u.o \
                         sgx_serialize_u.o sgx_ibbe_u.o
 NatvObjs             := $(filter-out $(EnclAllObjs), $(NatvObjs)) \
 	                    $(EnclaveName)_u.o
-NatvCommonObjs       := $(ObjDir)/sgx_initenclave_u.o $(ObjDir)/sgx_errlist_u.o
+NatvCommonObjs       := $(ObjDir)/sgx_initenclave_u.o $(ObjDir)/sgx_errlist_u.o $(ObjDir)/sgx_utils_rp_u.o
 Enclave_Lib_Dirs     := $(SGX_LIBRARY_PATH) $(dir $(ExtLibs))
 Enclave_Libs         := sgx_tsgxssl_crypto sgx_tsgxssl
 Enclave_SDK_Libs     := -Wl,--whole-archive \
@@ -74,7 +74,6 @@ Enclave_SDK_Libs     := -Wl,--whole-archive \
                         -Wl,--no-whole-archive \
                         -Wl,--start-group \
                              $(addprefix -l, sgx_tstdc sgx_tstdcxx sgx_tcrypto \
-                                             sgx_tsetjmp \
                                              $(Service_Library_Name) ) \
                         -Wl,--end-group
 Enclave_Link_Flags   := $(addprefix -L, $(Enclave_Lib_Dirs)) \
@@ -87,7 +86,7 @@ EnclaveLFlags := -Wl,--no-undefined -nostdlib \
 	-Wl,--defsym,__ImageBase=0 \
 	-Wl,--version-script=$(SrcDir)/$(EnclaveName).lds \
     $(addprefix -l, $(ExternalLibs) sgx_tstdc)
-SharedEnclFlags := -DENCLAVED
+SharedEnclFlags := -DENCLAVED -DDUMMY_TIME
 SharedEnclFlags += $(SharedCompFlags) -nostdinc -fvisibility=hidden \
 	               -fpie -fstack-protector -fno-builtin-printf
 Encl_CFlags     := $(SharedEnclFlags) $(CFlags) \
@@ -95,6 +94,7 @@ Encl_CFlags     := $(SharedEnclFlags) $(CFlags) \
 Encl_CXXFlags   := $(SharedEnclFlags) $(CXXFlags) -nostdinc++
 Enclave_IncDirs := $(SGX_SDK)/include/stlport $(SrcDir) $(SGX_SDK)/include \
                    $(SGX_SDK)/include/tlibc $(SGX_COMMONDIR) \
+                   $(SGX_COMMONDIR)/enclave_include \
                    $(PBCRootDir)/include $(SgxGMPDir) $(SGXOSSLIDir)
 Encl_Include    := $(addprefix -I, $(Enclave_IncDirs) $(IBBEDir))
 EnclAllObjs     := $(addprefix $(ObjDir)/,$(EnclAllObjs))
@@ -176,7 +176,7 @@ $(BinDir)/$(TARGET).signed.so : %.signed.so : %.so
 	@echo -e "SIGN (Enclave)\t=>\t$@"
 
 $(BinDir)/$(TARGET).so : $(EnclAllObjs)
-	@$(CXX) $^ -o $@ $(EnclaveLFlags)
+	$(CXX) $^ -o $@ $(EnclaveLFlags)
 	@echo -e "LINK (Enclave)\t=>\t$@"
 
 $(SrcDir)/$(EnclaveName)_t.c : $(SrcDir)/$(EnclaveName).edl $(SGX_EDGER8R)
@@ -224,14 +224,11 @@ $(GMPRootDir)/build-$(NativeToken)/gmp.h :
 	$(eval GMPDir := $(dir $@))
 	rm -rf $(GMPDir) && mkdir -p $(GMPDir) && cd $(GMPDir) && ../configure $(LibsConfigFlags)
 
-$(SGXOpenSSLLib) : $(OSSLDir)/sgxssl.1.9.100.99999.tar.gz
-	cd $(OSSLDir) && tar xzf $<
+$(SGXOpenSSLLib) : $(OSSLDir)/openssl_source/openssl-1.1.1a.tar.gz
+	$(MAKE) SGX_SDK=$(SGX_SDK) -C $(OSSLDir)/Linux 
 
-$(OSSLDir)/sgxssl.1.9.100.99999.tar.gz : $(OSSLDir)/openssl_source/openssl-1.1.0g.tar.gz
-	cd $(OSSLDir) && ./build_sgxssl.sh
-
-$(OSSLDir)/openssl_source/openssl-1.1.0g.tar.gz :
-	cd $(OSSLDir)/openssl_source/ && wget https://www.openssl.org/source/openssl-1.1.0g.tar.gz
+$(OSSLDir)/openssl_source/openssl-1.1.1a.tar.gz :
+	cd $(OSSLDir)/openssl_source/ && wget https://www.openssl.org/source/openssl-1.1.1a.tar.gz
 
 ################################################################################
 

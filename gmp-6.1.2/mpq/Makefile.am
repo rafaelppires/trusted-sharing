@@ -32,7 +32,7 @@
 AM_CPPFLAGS = -D__GMP_WITHIN_GMP -I$(top_srcdir)
 
 if SGXENABLED
-AM_CPPFLAGS += -DENCLAVED -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH)
+AM_CPPFLAGS += -DENCLAVED -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -Wno-implicit-function-declaration -I$(SGXSDKPATH)/include -I$(SGXSDKPATH)/include/tlibc -I$(SGXCOMMONPATH) -I$(SGXCOMMONPATH)/enclave_include/
 endif
 
 noinst_LTLIBRARIES = libmpq.la
