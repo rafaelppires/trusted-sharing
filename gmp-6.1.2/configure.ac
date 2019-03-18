@@ -3921,7 +3921,7 @@ GMP_FINISH
 # FIXME: Upcoming version of autoconf/automake may not like broken lines.
 #        Right now automake isn't accepting the new AC_CONFIG_FILES scheme.
 
-AC_SUBST([sgxcommon_path],[$(realpath ${srcdir}/../../sgx_common)])
+AC_SUBST([sgxcommon_path],[$(realpath ${srcdir}/../sgx_common)])
 
 AC_OUTPUT(Makefile							\
   mpf/Makefile mpn/Makefile mpq/Makefile				\

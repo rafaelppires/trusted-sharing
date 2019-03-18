@@ -179,7 +179,7 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([floor gettimeofday memmove memset pow sqrt strchr strdup])
 
-AC_SUBST([sgxcommon_path],[$(realpath ${srcdir}/../../sgx_common)])
+AC_SUBST([sgxcommon_path],[$(realpath ${srcdir}/../sgx_common)])
 
 AC_CONFIG_FILES([Makefile example/Makefile gen/Makefile])
 AC_OUTPUT
